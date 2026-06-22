@@ -17,14 +17,15 @@ function App() {
   const [selectedKecamatan, setSelectedKecamatan] = useState('');
   const [selectedKelurahan, setSelectedKelurahan] = useState('');
   const apiUrl = import.meta.env.VITE_API_BASE_URL;
+
   // ==========================================
   // 1. DATA FETCHING FROM GERBANG API
   // ==========================================
   useEffect(() => {
     Promise.all([
-      axios.get('/api/v1/dashboard/summary'),
-      axios.get('/api/v1/dashboard/petugas'),
-      axios.get('/api/v1/dashboard/timeline') // Tarik data sejarah harian
+      axios.get(`${apiUrl}/api/v1/dashboard/summary`),
+      axios.get(`${apiUrl}/api/v1/dashboard/petugas`),
+      axios.get(`${apiUrl}/api/v1/dashboard/timeline`) // Tarik data sejarah harian
     ])
     .then(([resDesa, resPetugas, resTimeline]) => {
       setDataDesa(resDesa.data.data);
