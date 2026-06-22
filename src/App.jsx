@@ -22,9 +22,9 @@ function App() {
   // ==========================================
   useEffect(() => {
     Promise.all([
-      axios.get('${apiUrl}/api/v1/dashboard/summary'),
-      axios.get('${apiUrl}/api/v1/dashboard/petugas'),
-      axios.get('${apiUrl}/api/v1/dashboard/timeline') // Tarik data sejarah harian
+      axios.get('/api/v1/dashboard/summary'),
+      axios.get('/api/v1/dashboard/petugas'),
+      axios.get('/api/v1/dashboard/timeline') // Tarik data sejarah harian
     ])
     .then(([resDesa, resPetugas, resTimeline]) => {
       setDataDesa(resDesa.data.data);
