@@ -1,7 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState, useMemo } from 'react';
+
+// import axios from 'react';
+import axios from 'axios'; // ✅ INI YANG BENAR!
 import DashboardCard from './components/DashboardCard';
-import { Users, Filter, Layers, TrendingUp } from 'lucide-react';
+// Menambahkan Calendar icon untuk indikator rentang waktu
+import { Users, Filter, Layers, TrendingUp, CheckCircle2, ArrowUpRight, FileText, AlertTriangle, Calendar } from 'lucide-react';
 // IMPORT KOMPONEN TAB MODULAR ANDA
 import TabDesa from './components/tabs/TabDesa';
 import TabPetugas from './components/tabs/TabPetugas';
@@ -11,7 +14,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('desa');
   const [dataDesa, setDataDesa] = useState([]);
   const [dataPetugas, setDataPetugas] = useState([]);
-  const [dataTimeline, setDataTimeline] = useState([]); // State Linimasa Baru
+  const [dataTimeline, setDataTimeline] = useState([]); 
 
   // State untuk Menyimpan Pilihan Filter
   const [selectedKecamatan, setSelectedKecamatan] = useState('');
@@ -25,7 +28,7 @@ function App() {
     Promise.all([
       axios.get(`${apiUrl}/api/v1/dashboard/summary`),
       axios.get(`${apiUrl}/api/v1/dashboard/petugas`),
-      axios.get(`${apiUrl}/api/v1/dashboard/timeline`) // Tarik data sejarah harian
+      axios.get(`${apiUrl}/api/v1/dashboard/timeline`) 
     ])
     .then(([resDesa, resPetugas, resTimeline]) => {
       setDataDesa(resDesa.data.data);
@@ -33,18 +36,78 @@ function App() {
       setDataTimeline(resTimeline.data.data);
     })
     .catch(err => console.error("Gagal koordinasi data dengan server:", err));
-  }, []);
+  }, [apiUrl]);
+
+  
+  // ==========================================
+  // 🌟 REVISI LOGIKA: RENTANG WAKTU TERBARU + KONDISI SATU TANGGAL
+  // ==========================================
+  const syncRange = useMemo(() => {
+    if (!dataPetugas || dataPetugas.length === 0) return { awal: '-', akhir: '-', single: true };
+
+    // 1. Ekstrak tanggal/waktu sync terakhir dari setiap baris data penugasan unik
+    const latestSyncTimesPerAssignment = dataPetugas
+      .map(item => item.last_synced_at)
+      .filter(tgl => tgl && tgl !== "-"); // Saring data kosong atau strip
+
+    if (latestSyncTimesPerAssignment.length === 0) return { awal: '-', akhir: '-', single: true };
+
+    // 2. Cari nilai waktu paling terbelakang (terlama) dan paling depan (terakhir)
+    const sortedTimes = latestSyncTimesPerAssignment.sort();
+    const terlamaRaw = sortedTimes[0]; 
+    const terakhirRaw = sortedTimes[sortedTimes.length - 1]; 
+
+    // 3. Fungsi pembantu lokal untuk memformat waktu menjadi "DD MMMM YYYY"
+    const formatHariBulanTahun = (dateTimeStr) => {
+      try {
+        const dateObj = new Date(dateTimeStr.replace(/-/g, '/')); // Ganti dash ke slash agar aman cross-browser
+        if (isNaN(dateObj.getTime())) {
+          const tglOnly = dateTimeStr.split(' ')[0];
+          const parts = tglOnly.split('-');
+          if (parts.length === 3) return `${parseInt(parts[2], 10)} ${getNamaBulan(parts[1])} ${parts[0]}`;
+          return dateTimeStr;
+        }
+        return dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      } catch (e) {
+        return dateTimeStr;
+      }
+    };
+
+    function getNamaBulan(bulanStr) {
+      const bulan = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+      ];
+      return bulan[parseInt(bulanStr, 10) - 1] || "";
+    }
+
+    const awalFormatted = formatHariBulanTahun(terlamaRaw);
+    const akhirFormatted = formatHariBulanTahun(terakhirRaw);
+
+    // 🌟 LOGIKA UTAMA: Jika tanggal awal dan akhir sama, tandai sebagai single date
+    if (awalFormatted === akhirFormatted) {
+      return {
+        awal: awalFormatted,
+        akhir: akhirFormatted,
+        single: true // Penanda bahwa rentang berada di hari yang sama
+      };
+    }
+
+    return {
+      awal: awalFormatted,
+      akhir: akhirFormatted,
+      single: false
+    };
+  }, [dataPetugas]);
 
   // ==========================================
   // 2. LOGIKA GENERATE LIST EXTRACT FILTER
   // ==========================================
-  // Ambil daftar unik kecamatan untuk dropdown pertama
   const listKecamatan = useMemo(() => {
     const unik = new Set(dataDesa.map(item => item.kecamatan));
     return Array.from(unik).sort();
   }, [dataDesa]);
 
-  // Ambil daftar unik kelurahan berdasarkan kecamatan yang sedang dipilih (Dependent)
   const listKelurahan = useMemo(() => {
     if (!selectedKecamatan) return [];
     const filtered = dataDesa.filter(item => item.kecamatan === selectedKecamatan);
@@ -52,7 +115,6 @@ function App() {
     return Array.from(unik).sort();
   }, [dataDesa, selectedKecamatan]);
 
-  // Reset filter kelurahan jika kecamatan diubah
   const handleKecamatanChange = (e) => {
     setSelectedKecamatan(e.target.value);
     setSelectedKelurahan('');
@@ -61,7 +123,6 @@ function App() {
   // ==========================================
   // 3. REACTIVE FILTERING ENGINE (MENGARUH KE SEMUA TAB)
   // ==========================================
-  // Filter Tab 1: Data Desa
   const filteredDataDesa = useMemo(() => {
     return dataDesa.filter(item => {
       const matchKec = selectedKecamatan ? item.kecamatan === selectedKecamatan : true;
@@ -70,9 +131,6 @@ function App() {
     });
   }, [dataDesa, selectedKecamatan, selectedKelurahan]);
 
-  // ==========================================
-  // REACTIVE FILTERING ENGINE FOR TAB 2 (PETUGAS)
-  // ==========================================
   const filteredDataPetugas = useMemo(() => {
     const filteredRaw = dataPetugas.filter(item => {
       const matchKec = selectedKecamatan ? item.kecamatan === selectedKecamatan : true;
@@ -85,90 +143,113 @@ function App() {
       if (!aggregated[item.email]) {
         aggregated[item.email] = {
           nama: item.nama, email: item.email, role: item.role,
-          target: 0, selesai: 0, sisa: 0,
-          detail_assignment: [] // 🌟 WADAH BARU KHUSUS DETAIL ASSIGNMENT/SLS
+          target: 0, status_open: 0, status_draft: 0, status_submitted: 0, status_approved: 0, status_rejected: 0,
+          detail_assignment: [] 
         };
       }
-      // Akumulasi Baris Utama Petugas
       aggregated[item.email].target += item.target;
-      aggregated[item.email].selesai += item.selesai;
-      aggregated[item.email].sisa += item.sisa;
+      aggregated[item.email].status_open += item.status_open;
+      aggregated[item.email].status_draft += item.status_draft;
+      aggregated[item.email].status_submitted += item.status_submitted;
+      aggregated[item.email].status_approved += item.status_approved;
+      aggregated[item.email].status_rejected += item.status_rejected;
       
-      // 🌟 DORONG DATA ASSIGNMENT (REGION CODE) KE DALAM KANTONG RINCIAN
+      const riilSelesaiLokal = item.status_approved + item.status_submitted;
       aggregated[item.email].detail_assignment.push({
         assignment_code: item.assignment_code,
         desa: item.desa,
         target: item.target,
-        selesai: item.selesai,
-        sisa: item.sisa,
-        progres_lokal: item.target > 0 ? Number((item.selesai / item.target * 100).toFixed(2)) : 0
+        status_open: item.status_open,
+        status_draft: item.status_draft,
+        status_submitted: item.status_submitted,
+        status_approved: item.status_approved,
+        status_rejected: item.status_rejected,
+        last_synced_at: item.last_synced_at,
+        progres_lokal: item.target > 0 ? Number((riilSelesaiLokal / item.target * 100).toFixed(2)) : 0
       });
     });
 
-    return Object.values(aggregated).map(p => ({
-      ...p,
-      progres_persen: p.target > 0 ? Number((p.selesai / p.target * 100).toFixed(2)) : 0
-    }));
+    return Object.values(aggregated).map(p => {
+      const totalRiilSelesai = p.status_approved + p.status_submitted;
+      return {
+        ...p,
+        progres_persen: p.target > 0 ? Number((totalRiilSelesai / p.target * 100).toFixed(2)) : 0
+      };
+    });
   }, [dataPetugas, selectedKecamatan, selectedKelurahan]);
 
-  // ==========================================
-  // REACTIVE FILTERING ENGINE FOR TAB 3 (HARIAN)
-  // ==========================================
   const chartDataHarian = useMemo(() => {
-    // Saring data mentah timeline berdasarkan filter area terpilih
     const filteredTimeline = dataTimeline.filter(item => {
       const matchKec = selectedKecamatan ? item.kecamatan === selectedKecamatan : true;
       const matchKel = selectedKelurahan ? item.desa === selectedKelurahan : true;
       return matchKec && matchKel;
     });
 
-    // Satukan dan akumulasikan data jika dikelompokkan berdasarkan tanggal unik
     const groupByDate = {};
     filteredTimeline.forEach(item => {
       if (!groupByDate[item.tanggal]) {
-        groupByDate[item.tanggal] = { tanggal: item.tanggal, Selesai: 0, Terbuka_Open: 0 };
+        groupByDate[item.tanggal] = { 
+          tanggal: item.tanggal, 
+          Target: 0, Approved: 0, Submitted: 0, Draft: 0, Rejected: 0, Open: 0 
+        };
       }
-      groupByDate[item.tanggal].Selesai += item.selesai;
-      groupByDate[item.tanggal].Terbuka_Open += item.sisa;
+      groupByDate[item.tanggal].Target += item.target;
+      groupByDate[item.tanggal].Approved += item.status_approved;
+      groupByDate[item.tanggal].Submitted += item.status_submitted;
+      groupByDate[item.tanggal].Draft += item.status_draft;
+      groupByDate[item.tanggal].Rejected += item.status_rejected;
+      groupByDate[item.tanggal].Open += item.status_open;
     });
 
-    // Kembalikan array urut kronologis tanggal untuk Recharts
     return Object.values(groupByDate);
   }, [dataTimeline, selectedKecamatan, selectedKelurahan]);
 
-  // ==========================================
-  // 4. DYNAMIC RE-CALCULATE KPI STATS
-  // ==========================================
   const globalStats = useMemo(() => {
-    const target = filteredDataDesa.reduce((acc, curr) => acc + curr.target, 0);
-    const selesai = filteredDataDesa.reduce((acc, curr) => acc + curr.selesai, 0);
-    const sisa = filteredDataDesa.reduce((acc, curr) => acc + curr.sisa, 0);
-    return { target, selesai, sisa };
+    const target = filteredDataDesa.reduce((acc, curr) => acc + (curr.target || 0), 0);
+    const approved = filteredDataDesa.reduce((acc, curr) => acc + (curr.status_approved || 0), 0);
+    const submitted = filteredDataDesa.reduce((acc, curr) => acc + (curr.status_submitted || 0), 0);
+    const draft = filteredDataDesa.reduce((acc, curr) => acc + (curr.status_draft || 0), 0);
+    const rejected = filteredDataDesa.reduce((acc, curr) => acc + (curr.status_rejected || 0), 0);
+    const open = filteredDataDesa.reduce((acc, curr) => acc + (curr.status_open || 0), 0);
+    return { target, approved, submitted, draft, rejected, open };
   }, [filteredDataDesa]);
 
 
   return (
     <div className="p-8 min-h-screen bg-slate-900 text-slate-100 font-sans">
       
-      {/* HEADER COMMAND CENTER */}
-      <header className="mb-8 flex justify-between items-center border-b border-slate-800 pb-5">
+      {/* HEADER COMMAND CENTER (DENGAN TAMPILAN RENTANG SYNC) */}
+      <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white">COMMAND CENTER SE2026</h1>
           <p className="text-slate-400 mt-1">BPS Kota Malang — Sistem Monitoring Progress Unggulan</p>
         </div>
-        <div className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 text-sm text-green-400 font-mono">
-          🟢 LIVE INGESTION ACTIVE
-        </div>
+        
+        {/* 🌟 BAGIAN POJOK KANAN ATAS: BADGE ACTIVE + RENTANG SINKRONISASI */}
+        <div className="text-xs text-slate-400 font-mono bg-slate-950/40 px-3 py-2 rounded-xl border border-slate-800/80 flex items-center gap-2 shadow-inner">
+            <Calendar size={14} className="text-blue-400" />
+            <span>Rentang Monitoring:</span>
+            {syncRange.awal === '-' ? (
+              <span className="text-slate-500 italic">Menunggu sinkronisasi...</span>
+            ) : syncRange.single ? (
+              <span className="text-slate-200 font-bold">{syncRange.awal}</span>
+            ) : (
+              <>
+                <span className="text-slate-200 font-bold">{syncRange.awal}</span>
+                <span className="text-slate-600">—</span>
+                <span className="text-slate-200 font-bold">{syncRange.akhir}</span>
+              </>
+            )}
+          </div>
       </header>
 
-      {/* PANEL CONTROL FILTER (DEPENDENT DROPDOWN) */}
+      {/* PANEL CONTROL FILTER */}
       <div className="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl mb-8 flex flex-col md:flex-row items-center gap-5 shadow-xl">
         <div className="flex items-center space-x-3 text-blue-400 font-bold text-sm tracking-wide shrink-0">
           <Filter size={18} />
           <span>FILTER MONITORING AREA:</span>
         </div>
         
-        {/* Dropdown 1: Kecamatan */}
         <div className="w-full md:w-64">
           <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Kecamatan</label>
           <select
@@ -183,7 +264,6 @@ function App() {
           </select>
         </div>
 
-        {/* Dropdown 2: Kelurahan / Desa (Dependent) */}
         <div className="w-full md:w-64">
           <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">Kelurahan / Desa</label>
           <select
@@ -199,7 +279,6 @@ function App() {
           </select>
         </div>
 
-        {/* Button Reset Filter */}
         {(selectedKecamatan || selectedKelurahan) && (
           <button
             onClick={() => { setSelectedKecamatan(''); setSelectedKelurahan(''); }}
@@ -210,11 +289,23 @@ function App() {
         )}
       </div>
 
-      {/* TIGA KARTU KPI UTAMA (Dihitung Reaktif Berdasarkan Filter) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <DashboardCard title="Beban Target Terfilter" value={globalStats.target} color="border-blue-500 bg-slate-800/50" />
-        <DashboardCard title="Kuesioner Masuk (Submitted)" value={globalStats.selesai} color="border-green-500 bg-slate-800/50" />
-        <DashboardCard title="Sisa Beban Lapangan (Open)" value={globalStats.sisa} color="border-amber-500 bg-slate-800/50" />
+      {/* 🌟 LIMA KARTU KPI UTAMA (FLUID FLEXBOX LAYOUT) */}
+      <div className="flex flex-wrap gap-4 mb-8">
+        <div className="flex-1 min-w-[200px]">
+          <DashboardCard title="Total Target" value={globalStats.target.toLocaleString('id-ID')} icon={<Users size={20}/>} color="border-blue-500 bg-slate-800/50 text-blue-400" />
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <DashboardCard title="Approved" value={globalStats.approved.toLocaleString('id-ID')} icon={<CheckCircle2 size={20}/>} color="border-emerald-500 bg-emerald-900/10 text-emerald-400" />
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <DashboardCard title="Submitted" value={globalStats.submitted.toLocaleString('id-ID')} icon={<ArrowUpRight size={20}/>} color="border-amber-500 bg-amber-900/10 text-amber-400" />
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <DashboardCard title="Draft" value={globalStats.draft.toLocaleString('id-ID')} icon={<FileText size={20}/>} color="border-slate-500 bg-slate-800/50 text-slate-300" />
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <DashboardCard title="Rejected" value={globalStats.rejected.toLocaleString('id-ID')} icon={<AlertTriangle size={20}/>} color="border-rose-500 bg-rose-900/10 text-rose-500" />
+        </div>
       </div>
 
       {/* NAVIGASI TAB KONTROL */}
@@ -230,17 +321,14 @@ function App() {
         </button>
       </div>
 
-      {/* VIEWPORT CONTROLLER CONTAINER (DI SINI KITA MENGGUNAKAN MODULARNYA!) */}
-      <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-2xl">
-        
-        {/* Panggil komponen dan lemparkan datanya menggunakan Props */}
+      {/* VIEWPORT CONTROLLER CONTAINER */}
+      <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-2xl overflow-hidden">
         {activeTab === 'desa' && <TabDesa dataDesa={filteredDataDesa} />}
         {activeTab === 'petugas' && <TabPetugas dataPetugas={filteredDataPetugas} dataTimeline={dataTimeline} />}
         {activeTab === 'harian' && <TabHarian chartData={chartDataHarian} />}
-
       </div>
     </div>
   );
 }
 
-export default App; 
+export default App;
