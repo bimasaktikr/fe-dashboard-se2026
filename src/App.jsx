@@ -328,6 +328,7 @@ function App() {
                   subtext="100% Beban Kerja"
                 />
               </div>
+              
               <div className="flex-1 min-w-[200px]">
                 <DashboardCard 
                   title="Approved" 

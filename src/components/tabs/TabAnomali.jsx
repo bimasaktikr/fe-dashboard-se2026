@@ -2,41 +2,41 @@ import React, { useState, useMemo } from 'react';
 import { AlertTriangle, Filter, AlertOctagon, FileWarning, UserX, MapPin } from 'lucide-react';
 
 export default function TabAnomali({ dataPetugas }) {
-  // 🌟 1. STATE KENDALI UTAMA
   const [filterAktif, setFilterAktif] = useState('under_50');
   const [selectedKecamatan, setSelectedKecamatan] = useState('');
   const [selectedDesa, setSelectedDesa] = useState('');
 
-  // 🌟 2. MESIN GROUPING: MENGGULUNG DATA FLAT MENJADI "PER PETUGAS"
+  // 🌟 KALKULATOR TARGET HARIAN DINAMIS (15 Juni - 75 Hari)
+  const getTargetHarian = () => {
+    const startDate = new Date('2026-06-15T00:00:00');
+    const today = new Date();
+    if (today < startDate) return 0;
+    const diffTime = today.getTime() - startDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 3600 * 24)) + 1;
+    if (diffDays > 75) return 100;
+    return (diffDays / 75) * 100;
+  };
+  const targetHarian = getTargetHarian();
+  
+  // 🌟 AMBANG BATAS ANOMALI: 50% dari Target Harian
+  const batasAnomaliHarian = targetHarian * 0.5; 
+
+  // MESIN GROUPING: MENGGULUNG DATA FLAT MENJADI "PER PETUGAS"
   const groupedPetugas = useMemo(() => {
     if (!dataPetugas) return [];
-
     const map = {};
     dataPetugas.forEach(item => {
       const email = item.email;
-      
-      // Jika petugas belum masuk map, buat kerangkanya
       if (!map[email]) {
         map[email] = {
-          nama: item.nama,
-          email: item.email,
-          role: item.role,
-          kecamatans: new Set(),
-          desas: new Set(),
-          target: 0,
-          status_approved: 0,
-          status_submitted: 0,
-          status_draft: 0,
-          status_rejected: 0,
-          status_open: 0
+          nama: item.nama, email: item.email, role: item.role,
+          kecamatans: new Set(), desas: new Set(),
+          target: 0, status_approved: 0, status_submitted: 0, status_draft: 0, status_rejected: 0, status_open: 0
         };
       }
-
-      // Tambahkan wilayah tugas ke dalam Set (menghindari duplikasi nama wilayah)
       if (item.kecamatan) map[email].kecamatans.add(item.kecamatan);
       if (item.desa) map[email].desas.add(item.desa);
 
-      // Jumlahkan seluruh beban kerja dari berbagai assignment (SLS)
       map[email].target += Number(item.target || item.target_usaha || 0);
       map[email].status_approved += Number(item.status_approved || 0);
       map[email].status_submitted += Number(item.status_submitted || 0);
@@ -45,12 +45,10 @@ export default function TabAnomali({ dataPetugas }) {
       map[email].status_open += Number(item.status_open || 0);
     });
 
-    // Finalisasi: Ubah Map kembali menjadi Array & Hitung Progres Total
     return Object.values(map).map(p => {
       const totalRiil = p.status_approved + p.status_submitted;
       return {
         ...p,
-        // Gabungkan nama kecamatan/desa jika bertugas di lebih dari 1 wilayah
         kecamatanStr: Array.from(p.kecamatans).join(', '),
         desaStr: Array.from(p.desas).join(', '),
         progres_persen: p.target > 0 ? Number((totalRiil / p.target * 100).toFixed(2)) : 0
@@ -58,7 +56,7 @@ export default function TabAnomali({ dataPetugas }) {
     });
   }, [dataPetugas]);
 
-  // 🌟 3. EKSTRAKSI DROPDOWN WILAYAH (Berdasarkan data mentah agar akurat)
+  // EKSTRAKSI DROPDOWN WILAYAH
   const listKecamatan = useMemo(() => {
     if (!dataPetugas) return [];
     return [...new Set(dataPetugas.map(item => item.kecamatan).filter(Boolean))].sort();
@@ -70,14 +68,14 @@ export default function TabAnomali({ dataPetugas }) {
     return [...new Set(desas.filter(Boolean))].sort();
   }, [dataPetugas, selectedKecamatan]);
 
-  // 🌟 4. MESIN FILTER (Anomali -> Kecamatan -> Desa)
+  // MESIN FILTER ANOMALI
   const dataAnomaliFiltered = useMemo(() => {
-    let hasilSaringan = groupedPetugas; // Gunakan data yang SUDAH DIGULUNG per petugas
+    let hasilSaringan = groupedPetugas; 
 
-    // TAHAP 1: Filter Anomali
     switch (filterAktif) {
       case 'under_50':
-        hasilSaringan = hasilSaringan.filter(item => item.progres_persen < 50);
+        // 🌟 KUNCI PERUBAHAN: Bandingkan dengan separuh dari target hari ini
+        hasilSaringan = hasilSaringan.filter(item => item.progres_persen < batasAnomaliHarian);
         break;
       case 'high_draft':
         hasilSaringan = hasilSaringan.filter(item => item.status_draft > item.status_submitted);
@@ -89,27 +87,17 @@ export default function TabAnomali({ dataPetugas }) {
         break;
     }
 
-    // TAHAP 2: Filter Kecamatan (Cek apakah Set kecamatan petugas mengandung filter)
-    if (selectedKecamatan) {
-      hasilSaringan = hasilSaringan.filter(item => item.kecamatans.has(selectedKecamatan));
-    }
+    if (selectedKecamatan) hasilSaringan = hasilSaringan.filter(item => item.kecamatans.has(selectedKecamatan));
+    if (selectedDesa) hasilSaringan = hasilSaringan.filter(item => item.desas.has(selectedDesa));
 
-    // TAHAP 3: Filter Desa
-    if (selectedDesa) {
-      hasilSaringan = hasilSaringan.filter(item => item.desas.has(selectedDesa));
-    }
-
-    // Urutkan default: Progres terkecil di atas
     return hasilSaringan.sort((a, b) => a.progres_persen - b.progres_persen);
-  }, [groupedPetugas, filterAktif, selectedKecamatan, selectedDesa]);
-
+  }, [groupedPetugas, filterAktif, selectedKecamatan, selectedDesa, batasAnomaliHarian]);
 
   return (
     <div className="space-y-6">
       {/* 🌟 PANEL KENDALI FILTER */}
       <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-700/50 space-y-4">
         
-        {/* Judul & Tombol Filter Anomali */}
         <div className="flex flex-wrap gap-4 items-center justify-between border-b border-slate-800 pb-4">
           <div className="flex items-center gap-3">
             <div className="bg-rose-500/20 p-2 rounded-lg">
@@ -128,7 +116,8 @@ export default function TabAnomali({ dataPetugas }) {
                 filterAktif === 'under_50' ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
               }`}
             >
-              <AlertTriangle size={14} /> Progres &lt; 50%
+              {/* Teks dinamis agar pengguna tahu berapa batas anomalinya hari ini */}
+              <AlertTriangle size={14} /> Progres &lt; {batasAnomaliHarian.toFixed(1)}% (Batas Hari Ini)
             </button>
             <button 
               onClick={() => setFilterAktif('high_draft')}
@@ -185,10 +174,7 @@ export default function TabAnomali({ dataPetugas }) {
           </div>
 
           {(selectedKecamatan || selectedDesa) && (
-            <button
-              onClick={() => { setSelectedKecamatan(''); setSelectedDesa(''); }}
-              className="text-xs font-semibold text-slate-400 hover:text-white underline transition-colors"
-            >
+            <button onClick={() => { setSelectedKecamatan(''); setSelectedDesa(''); }} className="text-xs font-semibold text-slate-400 hover:text-white underline transition-colors">
               Reset Wilayah
             </button>
           )}
@@ -228,7 +214,7 @@ export default function TabAnomali({ dataPetugas }) {
                     <div className="bg-slate-800/50 p-4 rounded-full mb-3">
                       <AlertTriangle size={32} className="text-emerald-500/50" />
                     </div>
-                    <span className="font-semibold text-emerald-400">Wilayah Bersih & Aman, Komandan!</span>
+                    <span className="font-semibold text-emerald-400">Aman & Terkendali, Komandan!</span>
                     <span className="text-xs mt-1">Tidak ditemukan petugas dengan parameter anomali di wilayah ini.</span>
                   </div>
                 </td>
@@ -241,21 +227,18 @@ export default function TabAnomali({ dataPetugas }) {
                     <div className="text-xs font-mono text-slate-400 mt-1">{item.email}</div>
                   </td>
                   <td className="p-4">
-                    {/* Menggunakan string gabungan agar semua desa/kec tampil rapi */}
                     <div className="font-semibold text-slate-300 leading-tight">{item.kecamatanStr}</div>
                     <div className="text-[11px] text-slate-400 mt-1 uppercase max-w-[200px] truncate" title={item.desaStr}>{item.desaStr}</div>
                   </td>
                   <td className="p-4 text-center font-mono text-slate-300">{item.target?.toLocaleString('id-ID')}</td>
                   <td className="p-4 text-center font-bold font-mono text-emerald-400">{item.status_approved?.toLocaleString('id-ID')}</td>
                   <td className="p-4 text-center font-semibold font-mono text-amber-400">{item.status_submitted?.toLocaleString('id-ID')}</td>
-                  
                   <td className={`p-4 text-center font-mono font-bold ${filterAktif === 'high_draft' ? 'text-amber-500 bg-amber-950/30' : 'text-slate-300'}`}>
                     {item.status_draft?.toLocaleString('id-ID')}
                   </td>
                   <td className={`p-4 text-center font-mono font-bold ${filterAktif === 'high_reject' ? 'text-rose-500 bg-rose-950/30' : 'text-rose-400'}`}>
                     {item.status_rejected?.toLocaleString('id-ID')}
                   </td>
-                  
                   <td className="p-4 text-center">
                     <span className={`font-bold font-mono px-2 py-1 rounded ${filterAktif === 'under_50' ? 'bg-rose-950/50 text-rose-400' : 'bg-slate-800 text-blue-400'}`}>
                       {item.progres_persen}%
