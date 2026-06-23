@@ -20,7 +20,27 @@ function App() {
   const [selectedKecamatan, setSelectedKecamatan] = useState('');
   const [selectedKelurahan, setSelectedKelurahan] = useState('');
   const apiUrl = import.meta.env.VITE_API_BASE_URL;
+  
+  // 🌟 KALKULATOR TARGET HARIAN DINAMIS
+  const getTargetHarian = () => {
+    const startDate = new Date('2026-06-15T00:00:00'); // Tanggal mulai tugas
+    const today = new Date(); // Hari ini
+    
+    // Jika hari ini belum tanggal 15 Juni, target 0%
+    if (today < startDate) return 0;
 
+    // Hitung selisih hari (dalam milidetik, diubah ke hari)
+    const diffTime = today.getTime() - startDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 3600 * 24)) + 1; // +1 karena tgl 15 dihitung hari ke-1
+
+    // Jika sudah lewat 75 hari, mentok di 100%
+    if (diffDays > 75) return 100;
+
+    // Hitung persentase: Hari ke-n dikali 1.333% (atau n / 75 * 100)
+    return (diffDays / 75) * 100;
+  };
+
+  const targetHarian = getTargetHarian();
   // ==========================================
   // 1. DATA FETCHING FROM GERBANG API
   // ==========================================

@@ -1,61 +1,96 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Map, TrendingUp, Clock } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 export default function TabPetugas({ dataPetugas, dataTimeline }) {
   const [expandedRow, setExpandedRow] = useState(null);
+  
+  // 🌟 STATE UNTUK SORTING (Default: Urutkan berdasarkan progres terbesar)
+  const [sortConfig, setSortConfig] = useState({ key: 'progres_persen', direction: 'desc' });
 
   const toggleRow = (email) => {
     setExpandedRow(expandedRow === email ? null : email);
   };
 
-  // Fungsi utilitas untuk memformat timestamp mentah database menjadi Tanggal & Waktu Lengkap Indonesia
+  // 🌟 KALKULATOR TARGET HARIAN DINAMIS (15 Juni - 75 Hari)
+  const getTargetHarian = () => {
+    const startDate = new Date('2026-06-15T00:00:00');
+    const today = new Date();
+    if (today < startDate) return 0;
+    const diffTime = today.getTime() - startDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 3600 * 24)) + 1;
+    if (diffDays > 75) return 100;
+    return (diffDays / 75) * 100;
+  };
+  const targetHarian = getTargetHarian();
+
+  // 🌟 MESIN PENGURUT DATA (Sorting Engine)
+  const sortedDataPetugas = useMemo(() => {
+    let sortableItems = [...(dataPetugas || [])];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        // Ambil nilai, handle undefined/null
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        // Jika tipe datanya string (seperti Nama Petugas), gunakan localeCompare
+        if (typeof aValue === 'string') {
+          return sortConfig.direction === 'asc' 
+            ? aValue.localeCompare(bValue) 
+            : bValue.localeCompare(aValue);
+        }
+
+        // Jika angka (seperti Target, Approved, Progres)
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [dataPetugas, sortConfig]);
+
+  // 🌟 FUNGSI PENANGAN KLIK HEADER
+  const requestSort = (key) => {
+    let direction = 'desc'; // Default klik pertama selalu dari yang terbesar (desc)
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc'; // Jika diklik lagi, balik jadi dari yang terkecil (asc)
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Fungsi utilitas render Ikon Sorting
+  const getSortIcon = (columnName) => {
+    if (sortConfig?.key !== columnName) return <ArrowUpDown size={14} className="opacity-30" />;
+    return sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-blue-400" /> : <ArrowDown size={14} className="text-blue-400" />;
+  };
+
+  // Format Waktu
   const formatLengkapWaktu = (timestampRaw) => {
     if (!timestampRaw || timestampRaw === "-") return "-";
     try {
       const dateObj = new Date(timestampRaw);
-      // Validasi jika format tanggal tidak valid
       if (isNaN(dateObj.getTime())) return timestampRaw;
-
       return new Intl.DateTimeFormat('id-ID', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
       }).format(dateObj) + ' WIB';
     } catch (e) {
       return timestampRaw;
     }
   };
 
-  // Fungsi dinamis untuk membuat grafik khusus petugas yang sedang di-klik
+  // Data Chart
   const getChartDataForPetugas = (email) => {
     if (!dataTimeline) return [];
-    
     const filtered = dataTimeline.filter(d => d.email_petugas === email);
-    
     const grouped = {};
     filtered.forEach(d => {
-      if (!grouped[d.tanggal]) {
-        grouped[d.tanggal] = { 
-          tanggal: d.tanggal, 
-          Approved: 0, 
-          Submitted: 0, 
-          Draft: 0, 
-          Rejected: 0, 
-          Open: 0 
-        };
-      }
+      if (!grouped[d.tanggal]) grouped[d.tanggal] = { tanggal: d.tanggal, Approved: 0, Submitted: 0 };
       grouped[d.tanggal].Approved += d.status_approved || 0;
       grouped[d.tanggal].Submitted += d.status_submitted || 0;
-      grouped[d.tanggal].Draft += d.status_draft || 0;
-      grouped[d.tanggal].Rejected += d.status_rejected || 0;
-      grouped[d.tanggal].Open += d.status_open || 0;
     });
-
     return Object.values(grouped).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
   };
 
@@ -65,20 +100,36 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
         <thead>
           <tr className="border-b border-slate-700 text-slate-400 text-sm uppercase font-semibold">
             <th className="p-4 w-10"></th>
-            <th className="p-4">Nama Petugas</th>
-            <th className="p-4 text-center">Beban Target</th>
-            <th className="p-4 text-center text-emerald-400">Approved</th>
-            <th className="p-4 text-center text-amber-400">Submitted</th>
-            <th className="p-4 text-center text-rose-400">Rejected</th>
-            <th className="p-4 w-1/4">Capaian Kinerja Total</th>
+            <th className="p-4 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => requestSort('nama')}>
+              <div className="flex items-center gap-2">Nama Petugas {getSortIcon('nama')}</div>
+            </th>
+            <th className="p-4 text-center cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => requestSort('target')}>
+              <div className="flex items-center justify-center gap-2">Beban Target {getSortIcon('target')}</div>
+            </th>
+            <th className="p-4 text-center text-emerald-400 cursor-pointer hover:bg-emerald-900/20 transition-colors" onClick={() => requestSort('status_approved')}>
+              <div className="flex items-center justify-center gap-2">Approved {getSortIcon('status_approved')}</div>
+            </th>
+            <th className="p-4 text-center text-amber-400 cursor-pointer hover:bg-amber-900/20 transition-colors" onClick={() => requestSort('status_submitted')}>
+              <div className="flex items-center justify-center gap-2">Submitted {getSortIcon('status_submitted')}</div>
+            </th>
+            <th className="p-4 text-center text-rose-400 cursor-pointer hover:bg-rose-900/20 transition-colors" onClick={() => requestSort('status_rejected')}>
+              <div className="flex items-center justify-center gap-2">Rejected {getSortIcon('status_rejected')}</div>
+            </th>
+            <th className="p-4 w-1/4 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => requestSort('progres_persen')}>
+              <div className="flex items-center gap-2">Capaian Kinerja Total {getSortIcon('progres_persen')}</div>
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-700/50 text-slate-300">
-          {dataPetugas.map((item, idx) => {
+          {/* 🌟 Gunakan sortedDataPetugas di sini, BUKAN dataPetugas mentah */}
+          {sortedDataPetugas.map((item, idx) => {
             const isExpanded = expandedRow === item.email;
+            const progres = item.progres_persen || 0;
+            const isAman = progres >= targetHarian;
+
             return (
               <React.Fragment key={idx}>
-                {/* BARIS UTAMA (BISA DI-KLIK) */}
+                {/* BARIS UTAMA */}
                 <tr 
                   onClick={() => toggleRow(item.email)}
                   className="hover:bg-slate-700/50 transition-colors cursor-pointer"
@@ -88,7 +139,8 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                   </td>
                   <td className="p-4">
                     <div className="font-bold text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-400"></span> {item.nama}
+                      <span className={`w-2 h-2 rounded-full ${isAman ? 'bg-emerald-400' : 'bg-rose-500'}`}></span> 
+                      {item.nama}
                     </div>
                     <div className="text-slate-400 font-mono text-xs mt-1">{item.email} • {item.role}</div>
                   </td>
@@ -97,25 +149,34 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                   <td className="p-4 text-center font-mono text-amber-400">{item.status_submitted}</td>
                   <td className="p-4 text-center font-mono text-rose-400">{item.status_rejected}</td>
                   <td className="p-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-full bg-slate-700 rounded-full h-3.5 border border-slate-600 overflow-hidden">
+                    <div className="flex flex-col gap-1.5" title={`Target Hari Ini: ${targetHarian.toFixed(2)}%`}>
+                      <div className="flex justify-between items-end">
+                        <span className={`text-sm font-bold font-mono ${isAman ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {progres}%
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">Target: {targetHarian.toFixed(1)}%</span>
+                      </div>
+                      <div className="relative w-full bg-slate-700 h-2.5 rounded-full overflow-hidden border border-slate-600">
                         <div 
-                          className="bg-gradient-to-r from-blue-500 to-emerald-500 h-full rounded-full transition-all duration-500" 
-                          style={{ width: `${item.progres_persen}%` }}
+                          className={`absolute top-0 left-0 h-full rounded-full transition-all duration-500 ${isAman ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                          style={{ width: `${Math.min(progres, 100)}%` }}
+                        ></div>
+                        <div 
+                          className="absolute top-0 h-full border-r-[2px] border-amber-400 z-10"
+                          style={{ left: `${targetHarian}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm font-bold text-white font-mono w-12 text-right">{item.progres_persen}%</span>
                     </div>
                   </td>
                 </tr>
 
-                {/* SUB-BARIS AKORDEON */}
+                {/* SUB-BARIS AKORDEON (Tetap sama seperti sebelumnya) */}
                 {isExpanded && (
                   <tr className="bg-slate-900/80 border-l-2 border-indigo-500">
                     <td colSpan="7" className="p-4">
+                      {/* ... (Konten detail assignment & grafik sama seperti sebelumnya) ... */}
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pl-12 pr-4 py-2">
-                        
-                        {/* KOLOM KIRI: TABEL DETAIL ASSIGNMENT */}
+                        {/* TABEL DETAIL */}
                         <div>
                           <h4 className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-2 mb-3">
                             <Map size={14} /> Detail Penugasan Region (SLS):
@@ -132,7 +193,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                               </tr>
                             </thead>
                             <tbody>
-                              {item.detail_assignment.map((assign, i) => (
+                              {item.detail_assignment?.map((assign, i) => (
                                 <tr key={i} className="border-b border-slate-700/30 last:border-0 hover:bg-slate-800/40">
                                   <td className="py-2 text-indigo-200 font-mono text-[11px] leading-tight">
                                     {assign.assignment_code} <br/>
@@ -142,8 +203,6 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                                   <td className="py-2 text-center font-mono text-emerald-500/80">{assign.status_approved}</td>
                                   <td className="py-2 text-center font-mono text-amber-500/80">{assign.status_submitted}</td>
                                   <td className="py-2 text-center font-mono text-rose-500/80">{assign.status_rejected}</td>
-                                  
-                                  {/* 🌟 DETAIL FIX TANGGAL DAN WAKTU LENGKAP DI SINI 🌟 */}
                                   <td className="py-2 text-right font-mono text-[11px] leading-relaxed">
                                     <span className="font-bold text-indigo-300 text-xs block mb-0.5">{assign.progres_lokal}%</span>
                                     {assign.last_synced_at !== "-" ? (
@@ -160,11 +219,10 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                             </tbody>
                           </table>
                         </div>
-
-                        {/* KOLOM KANAN: MINI CHART TREN HARIAN */}
+                        {/* CHART */}
                         <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
                           <h4 className="text-xs font-bold text-emerald-400 uppercase flex items-center gap-2 mb-4">
-                            <TrendingUp size={14} /> Kecepatan Validasi Harian ({item.nama})
+                            <TrendingUp size={14} /> Kecepatan Validasi Harian
                           </h4>
                           <div className="w-full h-[180px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -172,32 +230,13 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
                                 <XAxis dataKey="tanggal" stroke="#64748b" fontSize={10} tickMargin={10} />
                                 <YAxis stroke="#64748b" fontSize={10} width={30} />
-                                <Tooltip 
-                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', fontSize: '12px' }}
-                                  itemStyle={{ color: '#10b981' }}
-                                />
-                                <Line 
-                                  type="monotone" 
-                                  dataKey="Approved" 
-                                  stroke="#10b981" 
-                                  strokeWidth={2} 
-                                  dot={{ r: 3, fill: '#10b981' }} 
-                                  name="Approved"
-                                />
-                                <Line 
-                                  type="monotone" 
-                                  dataKey="Submitted" 
-                                  stroke="#fbbf24" 
-                                  strokeWidth={2} 
-                                  strokeDasharray="3 4"
-                                  dot={{ r: 2, fill: '#fbbf24' }} 
-                                  name="Submitted"
-                                />
+                                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }} />
+                                <Line type="monotone" dataKey="Approved" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                                <Line type="monotone" dataKey="Submitted" stroke="#fbbf24" strokeWidth={2} strokeDasharray="3 4" dot={{ r: 2 }} />
                               </LineChart>
                             </ResponsiveContainer>
                           </div>
                         </div>
-
                       </div>
                     </td>
                   </tr>
