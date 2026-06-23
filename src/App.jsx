@@ -9,6 +9,7 @@ import { Users, Filter, Layers, TrendingUp, CheckCircle2, ArrowUpRight, FileText
 import TabDesa from './components/tabs/TabDesa';
 import TabPetugas from './components/tabs/TabPetugas';
 import TabHarian from './components/tabs/TabHarian';
+import TabAnomali from './components/tabs/TabAnomali'; // Sesuaikan lokasi filenya
 
 function App() {
   const [activeTab, setActiveTab] = useState('desa');
@@ -20,7 +21,7 @@ function App() {
   const [selectedKecamatan, setSelectedKecamatan] = useState('');
   const [selectedKelurahan, setSelectedKelurahan] = useState('');
   const apiUrl = import.meta.env.VITE_API_BASE_URL;
-  
+
   // 🌟 KALKULATOR TARGET HARIAN DINAMIS
   const getTargetHarian = () => {
     const startDate = new Date('2026-06-15T00:00:00'); // Tanggal mulai tugas
@@ -378,6 +379,14 @@ function App() {
         <button onClick={() => setActiveTab('harian')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'harian' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-white'}`}>
           <TrendingUp size={16} /> <span>TAB 3: TREN PROGRES HARIAN</span>
         </button>
+        <button 
+          onClick={() => setActiveTab('anomali')}
+          className={`px-4 py-2 font-semibold text-sm rounded-t-lg transition-all flex items-center gap-2 ${
+            activeTab === 'anomali' ? 'bg-slate-800/80 text-rose-400 border-t-2 border-rose-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+          }`}
+        >
+          <AlertTriangle size={16} /> TAB 4: PEROLEHAN ANOMALI
+        </button>
       </div>
 
       {/* VIEWPORT CONTROLLER CONTAINER */}
@@ -385,6 +394,8 @@ function App() {
         {activeTab === 'desa' && <TabDesa dataDesa={filteredDataDesa} />}
         {activeTab === 'petugas' && <TabPetugas dataPetugas={filteredDataPetugas} dataTimeline={dataTimeline} />}
         {activeTab === 'harian' && <TabHarian chartData={chartDataHarian} />}
+        {/* RENDER TAB 4: ANOMALI */}
+        {activeTab === 'anomali' && <TabAnomali dataPetugas={dataPetugas} />}
       </div>
     </div>
   );
