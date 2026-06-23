@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios'; // ✅ INI YANG BENAR!
 import DashboardCard from './components/DashboardCard';
 // Menambahkan Calendar icon untuk indikator rentang waktu
-import { Users, Filter, Layers, TrendingUp, CheckCircle2, ArrowUpRight, FileText, AlertTriangle, Calendar } from 'lucide-react';
+import { Users, Filter, Layers, TrendingUp, CheckCircle2, ArrowUpRight, FileText, AlertTriangle, Calendar, Database } from 'lucide-react';
 // IMPORT KOMPONEN TAB MODULAR ANDA
 import TabDesa from './components/tabs/TabDesa';
 import TabPetugas from './components/tabs/TabPetugas';
@@ -310,16 +310,19 @@ function App() {
         )}
       </div>
 
-      {/* 🌟 LIMA KARTU KPI UTAMA DENGAN PERSENTASE KONTRIBUSI */}
+      {/* 🌟 ENAM KARTU KPI UTAMA (FLUID FLEXBOX LAYOUT) */}
       <div className="flex flex-wrap gap-4 mb-8">
-        {/* Kalkulasi total target sebagai pembagi utama */}
         {(() => {
           const totalTarget = globalStats.target || 1; // Cegah pembagian dengan nol
           const getPersen = (val) => ((val / totalTarget) * 100).toFixed(2) + "%";
+          
+          // Kalkulasi Total Perolehan (Kecuali Open dan Draft)
+          const totalPerolehan = (globalStats.approved || 0) + (globalStats.submitted || 0) + (globalStats.rejected || 0);
 
           return (
             <>
-              <div className="flex-1 min-w-[200px]">
+            {/* 2. KARTU TOTAL TARGET */}
+              <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Total Target" 
                   value={globalStats.target.toLocaleString('id-ID')} 
@@ -329,7 +332,21 @@ function App() {
                 />
               </div>
               
-              <div className="flex-1 min-w-[200px]">
+              {/* 1. KARTU TOTAL PEROLEHAN BARU */}
+              <div className="flex-1 min-w-[180px]">
+                <DashboardCard 
+                  title="Total Perolehan" 
+                  value={totalPerolehan.toLocaleString('id-ID')} 
+                  icon={<Database size={20}/>} 
+                  color="border-indigo-500 bg-indigo-900/10 text-indigo-400"
+                  subtext={`${getPersen(totalPerolehan)} dari target`}
+                />
+              </div>
+
+              
+              
+              {/* 3. KARTU APPROVED */}
+              <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Approved" 
                   value={globalStats.approved.toLocaleString('id-ID')} 
@@ -338,7 +355,9 @@ function App() {
                   subtext={`${getPersen(globalStats.approved)} dari target`}
                 />
               </div>
-              <div className="flex-1 min-w-[200px]">
+
+              {/* 4. KARTU SUBMITTED */}
+              <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Submitted" 
                   value={globalStats.submitted.toLocaleString('id-ID')} 
@@ -347,7 +366,9 @@ function App() {
                   subtext={`${getPersen(globalStats.submitted)} dari target`}
                 />
               </div>
-              <div className="flex-1 min-w-[200px]">
+
+              {/* 5. KARTU DRAFT */}
+              <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Draft" 
                   value={globalStats.draft.toLocaleString('id-ID')} 
@@ -356,7 +377,9 @@ function App() {
                   subtext={`${getPersen(globalStats.draft)} dari target`}
                 />
               </div>
-              <div className="flex-1 min-w-[200px]">
+
+              {/* 6. KARTU REJECTED */}
+              <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Rejected" 
                   value={globalStats.rejected.toLocaleString('id-ID')} 
@@ -369,6 +392,8 @@ function App() {
           );
         })()}
       </div>
+
+
       {/* NAVIGASI TAB KONTROL */}
       <div className="flex space-x-4 mb-6 bg-slate-800 p-1.5 rounded-xl w-fit border border-slate-700">
         <button onClick={() => setActiveTab('desa')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'desa' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
