@@ -176,7 +176,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                     <td colSpan="7" className="p-4">
                       {/* ... (Konten detail assignment & grafik sama seperti sebelumnya) ... */}
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pl-12 pr-4 py-2">
-                        {/* TABEL DETAIL */}
+                        {/* KOLOM KIRI: TABEL DETAIL ASSIGNMENT */}
                         <div>
                           <h4 className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-2 mb-3">
                             <Map size={14} /> Detail Penugasan Region (SLS):
@@ -185,11 +185,12 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                             <thead>
                               <tr className="text-slate-500 border-b border-slate-700/50">
                                 <th className="pb-2 text-left">Kode SLS</th>
-                                <th className="pb-2 text-center">Target</th>
+                                <th className="pb-2 text-center">Tgt</th>
                                 <th className="pb-2 text-center text-emerald-400">Appv</th>
                                 <th className="pb-2 text-center text-amber-400">Subm</th>
+                                <th className="pb-2 text-center text-slate-300">Drft</th> {/* 🌟 KOLOM BARU */}
                                 <th className="pb-2 text-center text-rose-400">Rejc</th>
-                                <th className="pb-2 text-right w-44">Bot Sync Terakhir</th>
+                                <th className="pb-2 text-right w-40">Bot Sync Terakhir</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -202,7 +203,10 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                                   <td className="py-2 text-center font-mono text-slate-400">{assign.target}</td>
                                   <td className="py-2 text-center font-mono text-emerald-500/80">{assign.status_approved}</td>
                                   <td className="py-2 text-center font-mono text-amber-500/80">{assign.status_submitted}</td>
+                                  {/* 🌟 DATA DRAFT DI SINI */}
+                                  <td className="py-2 text-center font-mono text-slate-300">{assign.status_draft}</td>
                                   <td className="py-2 text-center font-mono text-rose-500/80">{assign.status_rejected}</td>
+                                  
                                   <td className="py-2 text-right font-mono text-[11px] leading-relaxed">
                                     <span className="font-bold text-indigo-300 text-xs block mb-0.5">{assign.progres_lokal}%</span>
                                     {assign.last_synced_at !== "-" ? (
