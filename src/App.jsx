@@ -321,7 +321,9 @@ function App() {
 
           return (
             <>
-            {/* 2. KARTU TOTAL TARGET */}
+              
+
+              {/* 2. KARTU TOTAL TARGET (Tetap Angka Absolut Besar) */}
               <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Total Target" 
@@ -331,61 +333,59 @@ function App() {
                   subtext="100% Beban Kerja"
                 />
               </div>
-              
-              {/* 1. KARTU TOTAL PEROLEHAN BARU */}
+
+              {/* 1. KARTU TOTAL PEROLEHAN (Persentase Besar) */}
               <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Total Perolehan" 
-                  value={totalPerolehan.toLocaleString('id-ID')} 
+                  value={getPersen(totalPerolehan)} 
                   icon={<Database size={20}/>} 
                   color="border-indigo-500 bg-indigo-900/10 text-indigo-400"
-                  subtext={`${getPersen(totalPerolehan)} dari target`}
+                  subtext={`${totalPerolehan.toLocaleString('id-ID')} Dokumen`}
                 />
               </div>
-
               
-              
-              {/* 3. KARTU APPROVED */}
+              {/* 3. KARTU APPROVED (Persentase Besar) */}
               <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Approved" 
-                  value={globalStats.approved.toLocaleString('id-ID')} 
+                  value={getPersen(globalStats.approved)} 
                   icon={<CheckCircle2 size={20}/>} 
                   color="border-emerald-500 bg-emerald-900/10 text-emerald-400"
-                  subtext={`${getPersen(globalStats.approved)} dari target`}
+                  subtext={`${(globalStats.approved || 0).toLocaleString('id-ID')} Dokumen`}
                 />
               </div>
 
-              {/* 4. KARTU SUBMITTED */}
+              {/* 4. KARTU SUBMITTED (Persentase Besar) */}
               <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Submitted" 
-                  value={globalStats.submitted.toLocaleString('id-ID')} 
+                  value={getPersen(globalStats.submitted)} 
                   icon={<ArrowUpRight size={20}/>} 
                   color="border-amber-500 bg-amber-900/10 text-amber-400"
-                  subtext={`${getPersen(globalStats.submitted)} dari target`}
+                  subtext={`${(globalStats.submitted || 0).toLocaleString('id-ID')} Dokumen`}
                 />
               </div>
 
-              {/* 5. KARTU DRAFT */}
+              {/* 5. KARTU DRAFT (Persentase Besar) */}
               <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Draft" 
-                  value={globalStats.draft.toLocaleString('id-ID')} 
+                  value={getPersen(globalStats.draft)} 
                   icon={<FileText size={20}/>} 
                   color="border-slate-500 bg-slate-800/50 text-slate-300"
-                  subtext={`${getPersen(globalStats.draft)} dari target`}
+                  subtext={`${(globalStats.draft || 0).toLocaleString('id-ID')} Dokumen`}
                 />
               </div>
 
-              {/* 6. KARTU REJECTED */}
+              {/* 6. KARTU REJECTED (Persentase Besar) */}
               <div className="flex-1 min-w-[180px]">
                 <DashboardCard 
                   title="Rejected" 
-                  value={globalStats.rejected.toLocaleString('id-ID')} 
+                  value={getPersen(globalStats.rejected)} 
                   icon={<AlertTriangle size={20}/>} 
                   color="border-rose-500 bg-rose-900/10 text-rose-500"
-                  subtext={`${getPersen(globalStats.rejected)} dari target`}
+                  subtext={`${(globalStats.rejected || 0).toLocaleString('id-ID')} Dokumen`}
                 />
               </div>
             </>
