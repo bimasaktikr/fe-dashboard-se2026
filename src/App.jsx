@@ -241,7 +241,7 @@ function App() {
               </>
             )}
           </div>
-      </header>
+      </header> 
 
       {/* PANEL CONTROL FILTER */}
       <div className="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl mb-8 flex flex-col md:flex-row items-center gap-5 shadow-xl">
@@ -289,25 +289,64 @@ function App() {
         )}
       </div>
 
-      {/* 🌟 LIMA KARTU KPI UTAMA (FLUID FLEXBOX LAYOUT) */}
+      {/* 🌟 LIMA KARTU KPI UTAMA DENGAN PERSENTASE KONTRIBUSI */}
       <div className="flex flex-wrap gap-4 mb-8">
-        <div className="flex-1 min-w-[200px]">
-          <DashboardCard title="Total Target" value={globalStats.target.toLocaleString('id-ID')} icon={<Users size={20}/>} color="border-blue-500 bg-slate-800/50 text-blue-400" />
-        </div>
-        <div className="flex-1 min-w-[200px]">
-          <DashboardCard title="Approved" value={globalStats.approved.toLocaleString('id-ID')} icon={<CheckCircle2 size={20}/>} color="border-emerald-500 bg-emerald-900/10 text-emerald-400" />
-        </div>
-        <div className="flex-1 min-w-[200px]">
-          <DashboardCard title="Submitted" value={globalStats.submitted.toLocaleString('id-ID')} icon={<ArrowUpRight size={20}/>} color="border-amber-500 bg-amber-900/10 text-amber-400" />
-        </div>
-        <div className="flex-1 min-w-[200px]">
-          <DashboardCard title="Draft" value={globalStats.draft.toLocaleString('id-ID')} icon={<FileText size={20}/>} color="border-slate-500 bg-slate-800/50 text-slate-300" />
-        </div>
-        <div className="flex-1 min-w-[200px]">
-          <DashboardCard title="Rejected" value={globalStats.rejected.toLocaleString('id-ID')} icon={<AlertTriangle size={20}/>} color="border-rose-500 bg-rose-900/10 text-rose-500" />
-        </div>
-      </div>
+        {/* Kalkulasi total target sebagai pembagi utama */}
+        {(() => {
+          const totalTarget = globalStats.target || 1; // Cegah pembagian dengan nol
+          const getPersen = (val) => ((val / totalTarget) * 100).toFixed(2) + "%";
 
+          return (
+            <>
+              <div className="flex-1 min-w-[200px]">
+                <DashboardCard 
+                  title="Total Target" 
+                  value={globalStats.target.toLocaleString('id-ID')} 
+                  icon={<Users size={20}/>} 
+                  color="border-blue-500 bg-slate-800/50 text-blue-400"
+                  subtext="100% Beban Kerja"
+                />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <DashboardCard 
+                  title="Approved" 
+                  value={globalStats.approved.toLocaleString('id-ID')} 
+                  icon={<CheckCircle2 size={20}/>} 
+                  color="border-emerald-500 bg-emerald-900/10 text-emerald-400"
+                  subtext={`${getPersen(globalStats.approved)} dari target`}
+                />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <DashboardCard 
+                  title="Submitted" 
+                  value={globalStats.submitted.toLocaleString('id-ID')} 
+                  icon={<ArrowUpRight size={20}/>} 
+                  color="border-amber-500 bg-amber-900/10 text-amber-400"
+                  subtext={`${getPersen(globalStats.submitted)} dari target`}
+                />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <DashboardCard 
+                  title="Draft" 
+                  value={globalStats.draft.toLocaleString('id-ID')} 
+                  icon={<FileText size={20}/>} 
+                  color="border-slate-500 bg-slate-800/50 text-slate-300"
+                  subtext={`${getPersen(globalStats.draft)} dari target`}
+                />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <DashboardCard 
+                  title="Rejected" 
+                  value={globalStats.rejected.toLocaleString('id-ID')} 
+                  icon={<AlertTriangle size={20}/>} 
+                  color="border-rose-500 bg-rose-900/10 text-rose-500"
+                  subtext={`${getPersen(globalStats.rejected)} dari target`}
+                />
+              </div>
+            </>
+          );
+        })()}
+      </div>
       {/* NAVIGASI TAB KONTROL */}
       <div className="flex space-x-4 mb-6 bg-slate-800 p-1.5 rounded-xl w-fit border border-slate-700">
         <button onClick={() => setActiveTab('desa')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'desa' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
