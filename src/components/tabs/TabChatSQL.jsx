@@ -1,26 +1,71 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Send, Bot, User, Table as TableIcon, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Table as TableIcon, Loader2, ThumbsDown, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 const MessageTable = ({ data }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   
   if (!data || data.length === 0) return null;
   const headers = Object.keys(data[0]);
   const isTruncated = data.length > 5;
-  const displayData = isExpanded ? data : data.slice(0, 5);
+  
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedData = React.useMemo(() => {
+    let sortableData = [...data];
+    if (sortConfig.key !== null) {
+      sortableData.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableData;
+  }, [data, sortConfig]);
+
+  const displayData = isExpanded ? sortedData : sortedData.slice(0, 5);
 
   return (
     <div className="mt-4 overflow-x-auto rounded-xl border border-slate-700 bg-slate-800/50">
       <table className="w-full text-sm text-left text-slate-300">
         <thead className="text-xs text-slate-400 uppercase bg-slate-800/80">
           <tr>
-            {headers.map((h, i) => <th key={i} className="px-4 py-3 border-b border-slate-700">{h}</th>)}
+            <th className="px-4 py-3 border-b border-slate-700 w-12">No.</th>
+            {headers.map((h, i) => (
+              <th 
+                key={i} 
+                className="px-4 py-3 border-b border-slate-700 cursor-pointer hover:bg-slate-700/50 transition-colors"
+                onClick={() => handleSort(h)}
+              >
+                <div className="flex items-center gap-2">
+                  {h}
+                  {sortConfig.key === h ? (
+                    sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-blue-400" /> : <ArrowDown size={14} className="text-blue-400" />
+                  ) : (
+                    <ArrowUpDown size={14} className="opacity-30" />
+                  )}
+                </div>
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {displayData.map((row, i) => (
-            <tr key={i} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+            <tr key={i} className="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
+              <td className="px-4 py-3 font-medium text-slate-500">
+                {isExpanded ? i + 1 : (i + 1)}
+              </td>
               {headers.map((h, j) => <td key={j} className="px-4 py-3">{row[h] !== null ? row[h].toString() : '-'}</td>)}
             </tr>
           ))}
@@ -58,6 +103,20 @@ const TabChatSQL = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleFeedback = async (question, sql, msgIdx) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      await axios.post(`${apiUrl}/api/v1/chat/feedback`, { question: question || 'Unknown question', sql_generated: sql || '' });
+      
+      setMessages(prev => prev.map((msg, idx) => 
+        idx === msgIdx ? { ...msg, feedbackSent: true } : msg
+      ));
+    } catch (error) {
+      console.error("Feedback error:", error);
+      alert("Gagal mengirim laporan. Pastikan server backend menyala.");
+    }
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -81,6 +140,7 @@ const TabChatSQL = () => {
         text: text, 
         tableData: table_data, 
         sql: sql,
+        question: userMessage,
         type: 'data' 
       }]);
     } catch (error) {
@@ -136,6 +196,19 @@ const TabChatSQL = () => {
                 {msg.type === 'data' && msg.sql && (
                   <div className="mt-3 text-[10px] text-slate-500 font-mono bg-slate-900/50 p-2 rounded border border-slate-800">
                     <span className="text-slate-600">Query Executed: </span> {msg.sql}
+                  </div>
+                )}
+                
+                {msg.role === 'ai' && msg.type === 'data' && (
+                  <div className="mt-3 flex justify-end">
+                    <button 
+                      onClick={() => handleFeedback(msg.question, msg.sql, idx)}
+                      disabled={msg.feedbackSent}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${msg.feedbackSent ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20 cursor-not-allowed' : 'text-slate-400 bg-slate-800 border border-slate-700 hover:text-rose-400 hover:bg-slate-800 hover:border-rose-500/50 shadow-sm'}`}
+                      title="Laporkan jika AI memberikan jawaban atau kueri yang salah"
+                    >
+                      <ThumbsDown size={14} /> {msg.feedbackSent ? 'Dilaporkan ke Admin' : 'Jawaban Salah?'}
+                    </button>
                   </div>
                 )}
               </div>

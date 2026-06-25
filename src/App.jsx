@@ -4,16 +4,18 @@ import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios'; // ✅ INI YANG BENAR!
 import DashboardCard from './components/DashboardCard';
 // Menambahkan Calendar icon untuk indikator rentang waktu
-import { Users, Filter, Layers, TrendingUp, CheckCircle2, ArrowUpRight, FileText, AlertTriangle, Calendar, Database, MessageSquare } from 'lucide-react';
+import { Users, Filter, Layers, TrendingUp, CheckCircle2, ArrowUpRight, FileText, AlertTriangle, Calendar, Database, MessageSquare, Brain } from 'lucide-react';
 // IMPORT KOMPONEN TAB MODULAR ANDA
 import TabDesa from './components/tabs/TabDesa';
 import TabPetugas from './components/tabs/TabPetugas';
 import TabHarian from './components/tabs/TabHarian';
 import TabAnomali from './components/tabs/TabAnomali'; // Sesuaikan lokasi filenya
 import TabChatSQL from './components/tabs/TabChatSQL';
+import AdminTrainingPanel from './components/AdminTrainingPanel';
 
 function App() {
   const [activeTab, setActiveTab] = useState('desa');
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [dataDesa, setDataDesa] = useState([]);
   const [dataPetugas, setDataPetugas] = useState([]);
   const [dataTimeline, setDataTimeline] = useState([]); 
@@ -395,27 +397,37 @@ function App() {
       </div>
 
 
-      {/* NAVIGASI TAB KONTROL */}
-      <div className="flex space-x-4 mb-6 bg-slate-800 p-1.5 rounded-xl w-fit border border-slate-700">
-        <button onClick={() => setActiveTab('desa')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'desa' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
-          <Layers size={16} /> <span>TAB 1: PROGRES PER DESA</span>
-        </button>
-        <button onClick={() => setActiveTab('petugas')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'petugas' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
-          <Users size={16} /> <span>TAB 2: KINERJA PER PETUGAS</span>
-        </button>
-        <button onClick={() => setActiveTab('harian')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'harian' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-white'}`}>
-          <TrendingUp size={16} /> <span>TAB 3: TREN PROGRES HARIAN</span>
-        </button>
+      {/* NAVIGASI TAB KONTROL & ADMIN MODE */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex space-x-4 bg-slate-800 p-1.5 rounded-xl border border-slate-700">
+          <button onClick={() => setActiveTab('desa')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'desa' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
+            <Layers size={16} /> <span>TAB 1: PROGRES PER DESA</span>
+          </button>
+          <button onClick={() => setActiveTab('petugas')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'petugas' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
+            <Users size={16} /> <span>TAB 2: KINERJA PER PETUGAS</span>
+          </button>
+          <button onClick={() => setActiveTab('harian')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'harian' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'text-slate-400 hover:text-white'}`}>
+            <TrendingUp size={16} /> <span>TAB 3: TREN PROGRES HARIAN</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('anomali')}
+            className={`px-4 py-2 font-semibold text-sm rounded-t-lg transition-all flex items-center gap-2 ${
+              activeTab === 'anomali' ? 'bg-slate-800/80 text-rose-400 border-t-2 border-rose-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+            }`}
+          >
+            <AlertTriangle size={16} /> TAB 4: PEROLEHAN ANOMALI
+          </button>
+          <button onClick={() => setActiveTab('chat')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'chat' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-slate-400 hover:text-white'}`}>
+            <MessageSquare size={16} /> <span>TAB 5: TANYA DATA AI</span>
+          </button>
+        </div>
+
         <button 
-          onClick={() => setActiveTab('anomali')}
-          className={`px-4 py-2 font-semibold text-sm rounded-t-lg transition-all flex items-center gap-2 ${
-            activeTab === 'anomali' ? 'bg-slate-800/80 text-rose-400 border-t-2 border-rose-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
-          }`}
+          onClick={() => setShowAdminPanel(true)}
+          className="flex items-center space-x-2 px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-sm font-bold transition-all shadow-lg shadow-rose-500/10"
+          title="Buka Ruang Kontrol Pelatihan AI"
         >
-          <AlertTriangle size={16} /> TAB 4: PEROLEHAN ANOMALI
-        </button>
-        <button onClick={() => setActiveTab('chat')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'chat' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-slate-400 hover:text-white'}`}>
-          <MessageSquare size={16} /> <span>TAB 5: TANYA DATA AI</span>
+          <Brain size={16} /> <span>Admin AI Mode</span>
         </button>
       </div>
 
@@ -424,12 +436,13 @@ function App() {
         {activeTab === 'desa' && <TabDesa dataDesa={filteredDataDesa} />}
         {activeTab === 'petugas' && <TabPetugas dataPetugas={filteredDataPetugas} dataTimeline={dataTimeline} />}
         {activeTab === 'harian' && <TabHarian chartData={chartDataHarian} />}
-        {/* RENDER TAB 4: ANOMALI */}
         {activeTab === 'anomali' && <TabAnomali dataPetugas={dataPetugas} />}
         <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
           <TabChatSQL />
         </div>
       </div>
+      
+      {showAdminPanel && <AdminTrainingPanel onClose={() => setShowAdminPanel(false)} />}
     </div>
   );
 }
