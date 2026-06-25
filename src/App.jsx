@@ -4,12 +4,13 @@ import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios'; // ✅ INI YANG BENAR!
 import DashboardCard from './components/DashboardCard';
 // Menambahkan Calendar icon untuk indikator rentang waktu
-import { Users, Filter, Layers, TrendingUp, CheckCircle2, ArrowUpRight, FileText, AlertTriangle, Calendar, Database } from 'lucide-react';
+import { Users, Filter, Layers, TrendingUp, CheckCircle2, ArrowUpRight, FileText, AlertTriangle, Calendar, Database, MessageSquare } from 'lucide-react';
 // IMPORT KOMPONEN TAB MODULAR ANDA
 import TabDesa from './components/tabs/TabDesa';
 import TabPetugas from './components/tabs/TabPetugas';
 import TabHarian from './components/tabs/TabHarian';
 import TabAnomali from './components/tabs/TabAnomali'; // Sesuaikan lokasi filenya
+import TabChatSQL from './components/tabs/TabChatSQL';
 
 function App() {
   const [activeTab, setActiveTab] = useState('desa');
@@ -413,6 +414,9 @@ function App() {
         >
           <AlertTriangle size={16} /> TAB 4: PEROLEHAN ANOMALI
         </button>
+        <button onClick={() => setActiveTab('chat')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'chat' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-slate-400 hover:text-white'}`}>
+          <MessageSquare size={16} /> <span>TAB 5: TANYA DATA AI</span>
+        </button>
       </div>
 
       {/* VIEWPORT CONTROLLER CONTAINER */}
@@ -422,6 +426,9 @@ function App() {
         {activeTab === 'harian' && <TabHarian chartData={chartDataHarian} />}
         {/* RENDER TAB 4: ANOMALI */}
         {activeTab === 'anomali' && <TabAnomali dataPetugas={dataPetugas} />}
+        <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
+          <TabChatSQL />
+        </div>
       </div>
     </div>
   );
