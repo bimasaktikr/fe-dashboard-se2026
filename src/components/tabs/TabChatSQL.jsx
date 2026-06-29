@@ -421,7 +421,11 @@ const TabChatSQL = () => {
     // Kumpulkan riwayat percakapan yang berhasil dieksekusi sebelumnya
     const history = messages
       .filter(m => m.role === 'ai' && m.type === 'data' && m.sql)
-      .map(m => ({ question: m.question, sql: m.sql }));
+      .map(m => ({ 
+        question: m.question, 
+        sql: m.sql,
+        result_data: m.tableData || []
+      }));
 
     try {
       const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -456,9 +460,10 @@ const TabChatSQL = () => {
       }
     } catch (error) {
       console.error("Chat error:", error);
+      const errMsg = error.response?.data?.detail || 'Maaf, terjadi kesalahan saat menghubungi asisten AI BPS. Pastikan koneksi server menyala dengan baik.';
       setMessages(prev => [...prev, { 
         role: 'ai', 
-        text: 'Maaf, terjadi kesalahan saat menghubungi asisten AI BPS. Pastikan koneksi server menyala dengan baik.', 
+        text: errMsg, 
         type: 'error' 
       }]);
     } finally {
