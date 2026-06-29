@@ -127,8 +127,17 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
         <tbody className="divide-y divide-slate-700/50 text-slate-300">
           {sortedDataPetugas.map((item, idx) => {
             const isExpanded = expandedRow === item.email;
-            const progresTarget = item.progres_target || 0;
-            const progresAlokator = item.progres_alokator || 0;
+            
+            // 🌟 KALKULASI PROGRES AMAN (Jika target/alokator 0, hasil 0)
+            const target = item.target || 0;
+            const alokator = item.alokator || 0;
+            const approved = item.status_approved || 0;
+            const submitted = item.status_submitted || 0;
+            const rejected = item.status_rejected || 0;
+            const progresRiil = approved + submitted + rejected;
+
+            const progresTarget = target > 0 ? Math.round((progresRiil / target) * 100) : 0;
+            const progresAlokator = alokator > 0 ? Math.round((progresRiil / alokator) * 100) : 0;
 
             return (
               <React.Fragment key={idx}>
@@ -147,19 +156,18 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                     <div className="text-slate-400 font-mono text-[10px] mt-1 tracking-wider">{item.email} • <span className="text-indigo-400">{item.role}</span></div>
                   </td>
                   
-                  {/* 🌟 VALUE TARGET & ALOKATOR */}
-                  <td className="p-4 text-center font-black text-blue-400">{item.target}</td>
-                  <td className="p-4 text-center font-black text-purple-400">{item.alokator}</td>
+                  {/* VALUE TARGET & ALOKATOR */}
+                  <td className="p-4 text-center font-black text-blue-400">{target.toLocaleString()}</td>
+                  <td className="p-4 text-center font-black text-purple-400">{alokator.toLocaleString()}</td>
                   
-                  <td className="p-4 text-center font-mono text-emerald-400 font-bold">{item.status_approved}</td>
-                  <td className="p-4 text-center font-mono text-amber-400">{item.status_submitted}</td>
-                  <td className="p-4 text-center font-mono text-slate-400">{item.status_draft}</td>
-                  <td className="p-4 text-center font-mono text-rose-400">{item.status_rejected}</td>
+                  <td className="p-4 text-center font-mono text-emerald-400 font-bold">{approved.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono text-amber-400">{submitted.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono text-slate-400">{item.status_draft?.toLocaleString()}</td>
+                  <td className="p-4 text-center font-mono text-rose-400">{item.status_rejected?.toLocaleString()}</td>
                   
-                  {/* 🌟 DUAL PROGRESS BAR UNTUK PETUGAS */}
+                  {/* 🌟 DUAL PROGRESS BAR */}
                   <td className="p-4 text-sm">
                     <div className="space-y-3 w-full lg:w-56 mx-auto">
-                      
                       {/* BARIS ATAS: INDIKATOR TARGET UTAMA */}
                       <div>
                         <div className="flex justify-between text-[10px] text-blue-400 font-bold mb-1">
@@ -171,22 +179,32 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                             className={`absolute top-0 left-0 h-full rounded-full transition-all duration-500 ${progresTarget >= targetHarian ? 'bg-blue-500' : 'bg-rose-500'}`}
                             style={{ width: `${Math.min(progresTarget, 100)}%` }}
                           ></div>
-                          {/* Garis Batas Target Harian */}
                           <div className="absolute top-0 h-full border-r-[2px] border-amber-400 z-10" style={{ left: `${targetHarian}%` }}></div>
                         </div>
                       </div>
 
-                      {/* BARIS BAWAH: INDIKATOR ALOKATOR */}
+                      {/* BARIS BAWAH: INDIKATOR ALOKATOR DENGAN GARIS TARGET */}
                       <div>
                         <div className="flex justify-between text-[10px] text-purple-400 font-bold mb-1">
-                          <span>Vs Alokator</span>
+                          <span>Vs Alokator ({targetHarian.toFixed(1)}%)</span>
                           <span>{progresAlokator}%</span>
                         </div>
-                        <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-700">
-                          <div className="bg-purple-500 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(progresAlokator, 100)}%` }}></div>
+                        
+                        {/* Tambahkan 'relative' di sini agar garis target bisa muncul */}
+                        <div className="relative w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-700">
+                          {/* Bar Progress */}
+                          <div 
+                            className="bg-purple-500 h-full rounded-full transition-all duration-1000" 
+                            style={{ width: `${Math.min(progresAlokator, 100)}%` }}
+                          ></div>
+                          
+                          {/* Garis Penanda Target Harian (Marker) */}
+                          <div 
+                            className="absolute top-0 h-full border-r-[2px] border-amber-400 z-10" 
+                            style={{ left: `${targetHarian}%` }}
+                          ></div>
                         </div>
                       </div>
-
                     </div>
                   </td>
                 </tr>
@@ -211,6 +229,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                                   <th className="p-3 text-center text-purple-400">Alok</th>
                                   <th className="p-3 text-center text-emerald-400">Appv</th>
                                   <th className="p-3 text-center text-amber-400">Subm</th>
+                                  <th className="p-3 text-center text-red-400">Rjct</th>
                                   <th className="p-3 text-center">Dual Progress</th>
                                 </tr>
                               </thead>
@@ -232,23 +251,39 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                                       )}
                                       </div>
                                     </td>
-                                    
+                                    {/* baris accordion */}
                                     <td className="p-3 text-center font-black text-blue-400 text-xs">{assign.target}</td>
                                     <td className="p-3 text-center font-black text-purple-400 text-xs">{assign.alokator}</td>
                                     <td className="p-3 text-center font-mono text-emerald-500">{assign.status_approved}</td>
                                     <td className="p-3 text-center font-mono text-amber-500">{assign.status_submitted}</td>
+                                    <td className="p-3 text-center font-mono text-red-500">{assign.status_rejected}</td>
                                     
-                                    {/* 🌟 DUAL PROGRESS BAR VERSI MINI UNTUK SLS */}
-                                    <td className="p-3 w-32">
-                                      <div className="space-y-2">
-                                        <div className="relative w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700" title={`Vs Target: ${assign.progres_target}%`}>
+                                   {/* 🌟 DUAL PROGRESS BAR VERSI MINI UNTUK SLS DENGAN ANGKA */}
+                                  <td className="p-3 w-40"> {/* Lebar ditambah sedikit agar angka muat */}
+                                    <div className="space-y-2">
+                                      
+                                      {/* BARIS PROGRESS TARGET */}
+                                      <div className="flex items-center gap-2">
+                                        <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700" title={`Vs Target: ${assign.progres_target}%`}>
                                           <div className="absolute top-0 left-0 h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(assign.progres_target, 100)}%` }}></div>
                                         </div>
-                                        <div className="relative w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700" title={`Vs Alokator: ${assign.progres_alokator}%`}>
+                                        <span className="text-[10px] font-bold text-blue-400 w-8 text-right">
+                                          {assign.progres_target}%
+                                        </span>
+                                      </div>
+
+                                      {/* BARIS PROGRESS ALOKATOR */}
+                                      <div className="flex items-center gap-2">
+                                        <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700" title={`Vs Alokator: ${assign.progres_alokator}%`}>
                                           <div className="absolute top-0 left-0 h-full bg-purple-500 rounded-full" style={{ width: `${Math.min(assign.progres_alokator, 100)}%` }}></div>
                                         </div>
+                                        <span className="text-[10px] font-bold text-purple-400 w-8 text-right">
+                                          {assign.progres_alokator}%
+                                        </span>
                                       </div>
-                                    </td>
+                                      
+                                    </div>
+                                  </td>
                                     
                                   </tr>
                                 ))}

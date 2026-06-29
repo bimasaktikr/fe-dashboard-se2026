@@ -15,6 +15,7 @@ export default function TabDesa({ dataDesa }) {
     if (diffDays > 75) return 100;
     return (diffDays / 75) * 100;
   };
+
   const targetHarian = getTargetHarian();
 
   // 🌟 MESIN PENGURUT DATA (Sorting Engine)
@@ -71,10 +72,14 @@ export default function TabDesa({ dataDesa }) {
         <tbody className="divide-y divide-slate-700/40 text-sm">
           {sortedDataDesa.map((item, idx) => {
             // 🌟 Ambil progres target dan alokator langsung dari data API
-            const progresTarget = item.progres_target || 0;
-            const progresAlokator = item.progres_alokator || 0;
-            
-            // Cek apakah target utamanya aman sesuai hari ini
+            const target = item.target || 0;
+            const alokator = item.alokator || 0;
+            const selesai = (item.status_approved || 0) + (item.status_submitted || 0)+ (item.status_rejected || 0);
+
+            // Hitung persentase jika target > 0
+            const progresTarget = target > 0 ? Math.round((selesai / target) * 100) : 0;
+            const progresAlokator = alokator > 0 ? Math.round((selesai / alokator) * 100) : 0;
+                      
             const isAmanTarget = progresTarget >= targetHarian;
 
             return (

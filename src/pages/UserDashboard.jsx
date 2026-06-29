@@ -270,44 +270,65 @@ export default function UserDashboard() {
       {(() => {
         const totalTarget = globalStats.target || 1; 
         const totalAlokator = globalStats.alokator || 1; 
+        const approved = globalStats.approved || 0 ;
+        const submitted  = globalStats.submitted  || 0 ;
+        const rejected = globalStats.rejected || 0 ;
+        const draft = globalStats.draft || 0 ;
         const totalPerolehan = (globalStats.approved || 0) + (globalStats.submitted || 0) + (globalStats.rejected || 0);
 
-        const persenTarget = ((totalPerolehan / totalTarget) * 100).toFixed(2);
-        const persenAlokator = ((totalPerolehan / totalAlokator) * 100).toFixed(2);
+        const progresTarget = ((totalPerolehan / totalTarget) * 100).toFixed(2);
+        const progresAlokator = ((totalPerolehan / totalAlokator) * 100).toFixed(2);
 
         return (
           <div className="mb-8">
             
             {/* 🌟 DUAL PROGRESS BAR */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 text-blue-500"><Target size={80} /></div>
-                <div className="text-xs text-blue-400 font-bold tracking-wider mb-1">PROGRES VS TARGET UTAMA</div>
-                <div className="text-4xl font-black text-white">{persenTarget}%</div>
-                <div className="w-full bg-slate-900 h-3 rounded-full mt-4 overflow-hidden border border-slate-700">
-                  <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${Math.min(persenTarget, 100)}%` }}></div>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* KOLOM 1: TARGET UTAMA */}
+              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                <div className="flex justify-between items-end mb-2">
+                  <span className="text-slate-400 text-xs font-bold uppercase">Progres Target Utama</span>
+                  <span className="text-4xl font-black text-blue-400">{progresTarget}%</span>
                 </div>
+                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden">
+                  <div className="bg-blue-500 h-full" style={{ width: `${progresTarget}%` }}></div>
+                </div>
+                <p className="text-right text-xs text-slate-400 mt-1 font-mono">{totalPerolehan.toLocaleString()} / {totalTarget.toLocaleString()}</p>
               </div>
 
-              <div className="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 text-purple-500"><Users size={80} /></div>
-                <div className="text-xs text-purple-400 font-bold tracking-wider mb-1">PROGRES VS TARGET ALOKATOR</div>
-                <div className="text-4xl font-black text-white">{persenAlokator}%</div>
-                <div className="w-full bg-slate-900 h-3 rounded-full mt-4 overflow-hidden border border-slate-700">
-                  <div className="bg-purple-500 h-full transition-all duration-1000" style={{ width: `${Math.min(persenAlokator, 100)}%` }}></div>
+              {/* KOLOM 2: ALOKATOR */}
+              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                <div className="flex justify-between items-end mb-2">
+                  <span className="text-slate-400 text-xs font-bold uppercase">Progres Alokator</span>
+                  <span className="text-4xl font-black text-purple-400">{progresAlokator}%</span>
                 </div>
+                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden">
+                  <div className="bg-purple-500 h-full" style={{ width: `${progresAlokator}%` }}></div>
+                </div>
+                <p className="text-right text-xs text-slate-400 mt-1 font-mono">{totalPerolehan.toLocaleString()} / {totalAlokator.toLocaleString()}</p>
               </div>
             </div>
 
             {/* 🌟 7 KARTU ABSOLUT BAWAHNYA (Fluid Flexbox) */}
-            <div className="flex flex-wrap gap-3">
-              <div className="flex-1 min-w-[140px]"><DashboardCard title="Target Utama" value={globalStats.target.toLocaleString('id-ID')} icon={<Target size={18}/>} color="border-blue-500 bg-slate-800/50 text-blue-400" /></div>
-              <div className="flex-1 min-w-[140px]"><DashboardCard title="Target Alokator" value={globalStats.alokator.toLocaleString('id-ID')} icon={<Users size={18}/>} color="border-purple-500 bg-slate-800/50 text-purple-400" /></div>
-              <div className="flex-1 min-w-[140px]"><DashboardCard title="Total Selesai" value={totalPerolehan.toLocaleString('id-ID')} icon={<Database size={18}/>} color="border-indigo-500 bg-indigo-900/10 text-indigo-400" /></div>
-              <div className="flex-1 min-w-[140px]"><DashboardCard title="Approved" value={(globalStats.approved || 0).toLocaleString('id-ID')} icon={<CheckCircle2 size={18}/>} color="border-emerald-500 bg-emerald-900/10 text-emerald-400" /></div>
-              <div className="flex-1 min-w-[140px]"><DashboardCard title="Submitted" value={(globalStats.submitted || 0).toLocaleString('id-ID')} icon={<ArrowUpRight size={18}/>} color="border-amber-500 bg-amber-900/10 text-amber-400" /></div>
-              <div className="flex-1 min-w-[140px]"><DashboardCard title="Draft" value={(globalStats.draft || 0).toLocaleString('id-ID')} icon={<FileText size={18}/>} color="border-slate-500 bg-slate-800/50 text-slate-400" /></div>
-              <div className="flex-1 min-w-[140px]"><DashboardCard title="Rejected" value={(globalStats.rejected || 0).toLocaleString('id-ID')} icon={<AlertTriangle size={18}/>} color="border-rose-500 bg-rose-900/10 text-rose-500" /></div>
+            <div className="grid grid-cols-4 gap-4 mb-8">
+              {[
+                { label: 'Approved', val: approved, color: 'text-emerald-400', bg: 'bg-emerald-500' },
+                { label: 'Submitted', val: submitted, color: 'text-amber-400', bg: 'bg-amber-500' },
+                { label: 'Draft', val: draft, color: 'text-slate-300', bg: 'bg-slate-500' },
+                { label: 'Rejected', val: rejected, color: 'text-rose-400', bg: 'bg-rose-500' }
+              ].map((item, i) => (
+                <div key={i} className="bg-slate-900/40 p-4 rounded-lg border border-slate-700/50">
+                  <p className="text-[10px] uppercase font-bold text-slate-500">{item.label}</p>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className={`text-3xl font-black ${item.color}`}>{item.val.toLocaleString()}</span>
+                    {/* Indikator Progres Kecil untuk perbandingan ke Target Utama */}
+                    <span className="text-[18px] text-slate-500">{(totalTarget > 0 ? ((item.val/totalTarget)*100).toFixed(2) : 0)}%</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
+                    <div className={`${item.bg} h-full`} style={{ width: `${totalTarget > 0 ? Math.min((item.val/totalTarget)*100, 100) : 0}%` }}></div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         );
