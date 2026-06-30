@@ -225,10 +225,11 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                               <thead className="bg-slate-900">
                                 <tr className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">
                                   <th className="p-3 text-left">Wilayah & SLS</th>
-                                  <th className="p-3 text-center text-blue-400">Tgt</th>
-                                  <th className="p-3 text-center text-purple-400">Alok</th>
+                                  <th className="p-3 text-center text-blue-400">Tgt/Alok</th>
+                                  {/* <th className="p-3 text-center text-purple-400">Alok</th> */}
                                   <th className="p-3 text-center text-emerald-400">Appv</th>
                                   <th className="p-3 text-center text-amber-400">Subm</th>
+                                  <th className="p-3 text-center text-grey-400">Drft</th>
                                   <th className="p-3 text-center text-red-400">Rjct</th>
                                   <th className="p-3 text-center">Dual Progress</th>
                                 </tr>
@@ -252,10 +253,11 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
                                       </div>
                                     </td>
                                     {/* baris accordion */}
-                                    <td className="p-3 text-center font-black text-blue-400 text-xs">{assign.target}</td>
-                                    <td className="p-3 text-center font-black text-purple-400 text-xs">{assign.alokator}</td>
+                                    <td className="p-3 text-center font-black text-blue-400 text-xs">{assign.target} / {assign.alokator}</td>
+                                    {/* <td className="p-3 text-center font-black text-purple-400 text-xs">{assign.alokator}</td> */}
                                     <td className="p-3 text-center font-mono text-emerald-500">{assign.status_approved}</td>
                                     <td className="p-3 text-center font-mono text-amber-500">{assign.status_submitted}</td>
+                                    <td className="p-3 text-center font-mono text-grey-500">{assign.status_draft}</td>
                                     <td className="p-3 text-center font-mono text-red-500">{assign.status_rejected}</td>
                                     
                                    {/* 🌟 DUAL PROGRESS BAR VERSI MINI UNTUK SLS DENGAN ANGKA */}
