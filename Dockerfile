@@ -1,27 +1,14 @@
-# Gunakan base image yang lebih stabil
-FROM node:20-alpine
-
-# Set working directory
+# Tahap 1: Build React
+FROM node:20-alpine as build
 WORKDIR /app
-
-# Copy hanya file manifest untuk memanfaatkan Docker Cache
 COPY package.json package-lock.json* ./
-
-# Install dependensi dengan mode CI (paling aman untuk Docker)
-# --frozen-lockfile memastikan versi yang diinstall sama persis dengan lokal
 RUN npm ci
-
-# Copy sisa source code setelah instalasi selesai
 COPY . .
-
-# Pastikan environment dalam mode production saat build
 ENV NODE_ENV=production
-
-# Jalankan build
 RUN npm run build
 
-# Port yang digunakan
-EXPOSE 3000
-
-# Perintah menjalankan aplikasi
-CMD ["npm", "start"]
+# Tahap 2: Gunakan Nginx untuk menjalankan web super ringan
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
