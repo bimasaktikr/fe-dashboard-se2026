@@ -14,7 +14,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
 
   // 🌟 KALKULASI SISA HARI (Deadline: 31 Juli 2026)
   const getSisaHari = () => {
-    const deadline = new Date('2026-08-31T23:59:59');
+    const deadline = new Date('2026-08-15T23:59:59');
     const today = new Date();
     if (today >= deadline) return 1; // Cegah pembagian dengan 0 atau minus
     const diffTime = deadline.getTime() - today.getTime();
