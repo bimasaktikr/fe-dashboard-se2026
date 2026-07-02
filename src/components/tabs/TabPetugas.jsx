@@ -12,7 +12,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
     setExpandedRow(expandedRow === email ? null : email);
   };
 
-  // 🌟 KALKULASI SISA HARI (Deadline: 31 Juli 2026)
+  // 🌟 KALKULASI SISA HARI (Deadline: 15 Agustus 2026)
   const getSisaHari = () => {
     const deadline = new Date('2026-08-15T23:59:59');
     const today = new Date();
@@ -22,15 +22,15 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
   };
   const sisaHari = getSisaHari();
 
-  // 🌟 KALKULATOR TARGET HARIAN DINAMIS (15 Juni - 75 Hari)
+  // 🌟 KALKULATOR TARGET HARIAN DINAMIS (15 Juni - 60 Hari)
   const getTargetHarian = () => {
     const startDate = new Date('2026-06-15T00:00:00');
     const today = new Date();
     if (today < startDate) return 0;
     const diffTime = today.getTime() - startDate.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 3600 * 24)) + 1;
-    if (diffDays > 75) return 100;
-    return (diffDays / 75) * 100;
+    if (diffDays > 60) return 100;
+    return (diffDays / 60) * 100;
   };
   const targetHarian = getTargetHarian();
 
