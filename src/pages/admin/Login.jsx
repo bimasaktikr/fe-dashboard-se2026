@@ -19,10 +19,12 @@ export default function Login({ onLogin }) {
     setError('');
 
     try {
-      await axios.post('http://localhost:8000/api/v1/admin/login', {
-        username,
-        password
+      const API_URL = import.meta.env.VITE_API_BASE_URL || '';
+      const res = await axios.post(`${API_URL}/api/v1/admin/login`, {
+        username: username,
+        password: password
       });
+      localStorage.setItem('admin_auth', 'true');
       onLogin(); // Berhasil login
     } catch (err) {
       setError(err.response?.data?.detail || "Koneksi ke server gagal. Pastikan backend aktif.");
