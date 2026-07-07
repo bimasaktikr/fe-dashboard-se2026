@@ -17,8 +17,6 @@ function Sidebar({ onLogout }) {
   const menus = [
     { name: 'Upload Wilayah', path: '/admin/upload-wilayah', icon: <MapPin size={20} /> },
     { name: 'Upload Petugas', path: '/admin/upload-petugas', icon: <Users size={20} /> },
-    { name: 'Tambah Petugas', path: '/admin/tambah-petugas', icon: <Users size={20} /> },
-    { name: 'Transfer Petugas', path: '/admin/transfer-petugas', icon: <Users size={20} /> },
     { name: 'Data Historis', path: '/admin/historis', icon: <History size={20} /> },
     { name: 'Trigger Bot FASIH', path: '/admin/trigger-bot', icon: <Bot size={20} /> },
     { name: '🧠 Latih Ulang AI', path: '/admin/ai-training', icon: <BrainCircuit size={20} /> },
