@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, Download } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
-export default function TabDesa({ dataDesa, onExport }) {
+export default function TabDesa({ dataDesa }) {
   // 🌟 State Sorting (Default urutkan berdasarkan Capaian vs Target Utama)
   const [sortConfig, setSortConfig] = useState({ key: 'progres_target', direction: 'desc' });
 
@@ -47,16 +47,8 @@ export default function TabDesa({ dataDesa, onExport }) {
   };
 
   return (
-    <div className="flex flex-col space-y-4">
-      <div className="flex justify-between items-center bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
-        <span className="text-sm font-semibold text-slate-400">Total: <strong className="text-white font-bold">{dataDesa?.length || 0}</strong> kelurahan/desa terpantau</span>
-        <button onClick={onExport} className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-emerald-950/20 transition-all">
-          <Download size={16} />
-          <span>Unduh Excel</span>
-        </button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[1000px]">
+    <div className="overflow-x-auto">
+      <table className="w-full text-left border-collapse min-w-[1000px]">
         <thead>
           <tr className="bg-slate-900/60 text-slate-400 text-[11px] font-bold uppercase tracking-wider border-b border-slate-700">
             <th className="p-4 cursor-pointer hover:bg-slate-800" onClick={() => requestSort('kecamatan')}>Kecamatan {getSortIcon('kecamatan')}</th>
@@ -150,6 +142,5 @@ export default function TabDesa({ dataDesa, onExport }) {
         </tbody>
       </table>
     </div>
-  </div>
   );
 }
