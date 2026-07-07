@@ -1,12 +1,25 @@
-import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import axios from 'axios';
+import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, ArrowDown, Download } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-export default function TabPetugas({ dataPetugas, dataTimeline }) {
+export default function TabPetugas({ dataTimeline, selectedKecamatan, selectedKelurahan, onExport }) {
   const [expandedRow, setExpandedRow] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [serverData, setServerData] = useState([]);
+  const [totalData, setTotalData] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
   
   // 🌟 STATE UNTUK SORTING
   const [sortConfig, setSortConfig] = useState({ key: 'progres_persen', direction: 'desc' });
+  const apiUrl = 'http://localhost:8000'; // FIXME: Revert to import.meta.env.VITE_API_BASE_URL for production
+
+  // Reset page when sorting or rows per page changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [sortConfig, rowsPerPage]);
 
   const toggleRow = (email) => {
     setExpandedRow(expandedRow === email ? null : email);
@@ -34,29 +47,27 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
   };
   const targetHarian = getTargetHarian();
 
-  // 🌟 MESIN PENGURUT DATA
-  const sortedDataPetugas = useMemo(() => {
-    let sortableItems = [...(dataPetugas || [])];
-    if (sortConfig !== null) {
-      sortableItems.sort((a, b) => {
-        let aValue = a[sortConfig.key];
-        let bValue = b[sortConfig.key];
-
-        if (typeof aValue === 'string') {
-          return sortConfig.direction === 'asc' 
-            ? aValue.localeCompare(bValue) 
-            : bValue.localeCompare(aValue);
-        }
-
-        aValue = Number(aValue) || 0;
-        bValue = Number(bValue) || 0;
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-    return sortableItems;
-  }, [dataPetugas, sortConfig]);
+  // 🌟 SERVER-SIDE FETCHING
+  useEffect(() => {
+    setIsLoading(true);
+    axios.get(`${apiUrl}/api/v1/dashboard/petugas`, {
+      params: {
+        page: currentPage,
+        limit: rowsPerPage,
+        sort_by: sortConfig?.key || 'progres_persen',
+        order: sortConfig?.direction || 'desc',
+        kecamatan: selectedKecamatan || '',
+        desa: selectedKelurahan || ''
+      }
+    })
+    .then(res => {
+      setServerData(res.data.data || []);
+      setTotalData(res.data.total_data || 0);
+      setTotalPages(res.data.total_pages || 1);
+    })
+    .catch(err => console.error("Error fetching paginated petugas:", err))
+    .finally(() => setIsLoading(false));
+  }, [currentPage, rowsPerPage, sortConfig, selectedKecamatan, selectedKelurahan, apiUrl]);
 
   const requestSort = (key) => {
     let direction = 'desc';
@@ -98,8 +109,16 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
   };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left border-collapse min-w-[1000px]">
+    <div className="flex flex-col space-y-4">
+      <div className="flex justify-between items-center bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
+        <span className="text-sm font-semibold text-slate-400">Total: <strong className="text-white font-bold">{totalData || 0}</strong> petugas terpantau</span>
+        <button onClick={onExport} className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-emerald-950/20 transition-all">
+          <Download size={16} />
+          <span>Unduh Excel</span>
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[1000px]">
         <thead>
           <tr className="border-b border-slate-700 text-slate-400 text-[11px] uppercase font-bold tracking-wider">
             <th className="p-4 w-10"></th>
@@ -121,16 +140,16 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
             <th className="p-4 text-center text-rose-400 cursor-pointer hover:bg-rose-900/20 transition-colors" onClick={() => requestSort('status_rejected')}>
               <div className="flex items-center justify-center">Rejc {getSortIcon('status_rejected')}</div>
             </th>
-            <th className="p-4 text-center text-teal-400 cursor-pointer hover:bg-teal-900/20 transition-colors" title="Target yg harus dikerjakan per hari (Open+Draft / Sisa Hari)">
-              <div className="flex items-center justify-center">Tgt Harian</div>
+            <th className="p-4 text-center text-teal-400 cursor-pointer hover:bg-teal-900/20 transition-colors" title="Target yg harus dikerjakan per hari" onClick={() => requestSort('target_harian_petugas')}>
+              <div className="flex items-center justify-center">Tgt Harian {getSortIcon('target_harian_petugas')}</div>
             </th>
             <th className="p-4 w-1/4 cursor-pointer hover:bg-slate-800/50 transition-colors text-center" onClick={() => requestSort('progres_persen')}>
               <div className="flex items-center justify-center">Capaian Kinerja Total {getSortIcon('progres_persen')}</div>
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-700/50 text-slate-300">
-          {sortedDataPetugas.map((item, idx) => {
+        <tbody className={`divide-y divide-slate-700/50 text-slate-300 transition-opacity duration-300 ${isLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+          {serverData.map((item, idx) => {
             const isExpanded = expandedRow === item.email;
             
             const target = item.target || 0;
@@ -142,11 +161,11 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
             const rejected = item.status_rejected || 0;
             
             const progresRiil = approved + submitted + rejected;
-            const pTarget = target > 0 ? Math.round((progresRiil / target) * 100) : 0;
-            const pAlokator = alokator > 0 ? Math.round((progresRiil / alokator) * 100) : 0;
+            const pTarget = item.progres_target || 0;
+            const pAlokator = item.progres_alokator || 0;
             const isAman = pTarget >= targetHarian;
 
-            const harusDikerjakanPerHari = Math.ceil((alokator - progresRiil) / sisaHari);
+            const harusDikerjakanPerHari = item.target_harian_petugas || 0;
 
             return (
               <React.Fragment key={idx}>
@@ -315,6 +334,68 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
           })}
         </tbody>
       </table>
+      </div>
+
+      {/* 🌟 PAGINATION CONTROLS */}
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-400">
+        <div>
+          Menampilkan baris ke-{(currentPage - 1) * rowsPerPage + 1} hingga {Math.min(currentPage * rowsPerPage, totalData)} dari {totalData} petugas (Server-Side)
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="petugas-rows" className="text-slate-500">Baris:</label>
+          <select
+            id="petugas-rows"
+            value={rowsPerPage}
+            onChange={(e) => setRowsPerPage(Number(e.target.value))}
+            className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-300"
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+
+          {/* Tombol halaman pertama */}
+          <button
+            type="button"
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+            className="px-2 py-1 rounded border border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800 font-mono"
+            title="Halaman Pertama"
+          >
+            «
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+          >
+            Prev
+          </button>
+          <span className="text-slate-300">Hal {currentPage}/{totalPages}</span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
+          >
+            Next
+          </button>
+
+          {/* Tombol halaman terakhir */}
+          <button
+            type="button"
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages}
+            className="px-2 py-1 rounded border border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800 font-mono"
+            title="Halaman Terakhir"
+          >
+            »
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

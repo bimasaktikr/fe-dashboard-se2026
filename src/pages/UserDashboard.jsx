@@ -12,12 +12,11 @@ import TabChatSQL from '../components/tabs/TabChatSQL';
 export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState('desa');
   const [dataDesa, setDataDesa] = useState([]);
-  const [dataPetugas, setDataPetugas] = useState([]);
   const [dataTimeline, setDataTimeline] = useState([]); 
 
   const [selectedKecamatan, setSelectedKecamatan] = useState('');
   const [selectedKelurahan, setSelectedKelurahan] = useState('');
-  const apiUrl = import.meta.env.VITE_API_BASE_URL;
+  const apiUrl = 'http://localhost:8000'; // FIXME: Revert to import.meta.env.VITE_API_BASE_URL for production
 
   // 🌟 KALKULATOR TARGET HARIAN DINAMIS
   const getTargetHarian = () => {
@@ -31,19 +30,27 @@ export default function UserDashboard() {
   };
   const targetHarian = getTargetHarian();
 
+  const handleExportExcel = (tabIndex) => {
+    const params = new URLSearchParams();
+    params.append("tab", tabIndex);
+    if (selectedKecamatan) params.append("kecamatan", selectedKecamatan);
+    if (selectedKelurahan) params.append("kelurahan", selectedKelurahan);
+
+    const downloadUrl = `${apiUrl}/api/v1/dashboard/export?${params.toString()}`;
+    window.open(downloadUrl, "_blank");
+  };
+
   // ==========================================
   // 1. DATA FETCHING FROM GERBANG API
   // ==========================================
   useEffect(() => {
     Promise.all([
       axios.get(`${apiUrl}/api/v1/dashboard/summary`),
-      axios.get(`${apiUrl}/api/v1/dashboard/petugas`),
       axios.get(`${apiUrl}/api/v1/dashboard/timeline`) 
     ])
-    .then(([resDesa, resPetugas, resTimeline]) => {
-      setDataDesa(resDesa.data.data);
-      setDataPetugas(resPetugas.data.data);
-      setDataTimeline(resTimeline.data.data);
+    .then(([resDesa, resTimeline]) => {
+      setDataDesa(resDesa.data?.data || []);
+      setDataTimeline(resTimeline.data?.data || []);
     })
     .catch(err => console.error("Gagal koordinasi data dengan server:", err));
   }, [apiUrl]);
@@ -52,9 +59,9 @@ export default function UserDashboard() {
   // RENTANG WAKTU SYNC
   // ==========================================
   const syncRange = useMemo(() => {
-    if (!dataPetugas || dataPetugas.length === 0) return { awal: '-', akhir: '-', single: true };
-    const latestSyncTimesPerAssignment = dataPetugas
-      .map(item => item.last_synced_at)
+    if (!dataTimeline || dataTimeline.length === 0) return { awal: '-', akhir: '-', single: true };
+    const latestSyncTimesPerAssignment = dataTimeline
+      .map(item => item.tanggal)
       .filter(tgl => tgl && tgl !== "-"); 
 
     if (latestSyncTimesPerAssignment.length === 0) return { awal: '-', akhir: '-', single: true };
@@ -87,7 +94,7 @@ export default function UserDashboard() {
 
     if (awalFormatted === akhirFormatted) return { awal: awalFormatted, akhir: akhirFormatted, single: true };
     return { awal: awalFormatted, akhir: akhirFormatted, single: false };
-  }, [dataPetugas]);
+  }, [dataTimeline]);
 
   // ==========================================
   // 2. LOGIKA GENERATE LIST EXTRACT FILTER
@@ -120,58 +127,7 @@ export default function UserDashboard() {
     });
   }, [dataDesa, selectedKecamatan, selectedKelurahan]);
 
-  const filteredDataPetugas = useMemo(() => {
-    const filteredRaw = dataPetugas.filter(item => {
-      const matchKec = selectedKecamatan ? item.kecamatan === selectedKecamatan : true;
-      const matchKel = selectedKelurahan ? item.desa === selectedKelurahan : true;
-      return matchKec && matchKel;
-    });
-
-    const aggregated = {};
-    filteredRaw.forEach(item => {
-      if (!aggregated[item.email]) {
-        aggregated[item.email] = {
-          nama: item.nama, email: item.email, role: item.role,
-          target: 0, alokator: 0, // 🌟 BARU: ALOKATOR DITAMBAHKAN
-          status_open: 0, status_draft: 0, status_submitted: 0, status_approved: 0, status_rejected: 0,
-          detail_assignment: [] 
-        };
-      }
-      aggregated[item.email].target += (item.target || 0);
-      aggregated[item.email].alokator += (item.alokator || 0); // 🌟 BARU: AGREGASI ALOKATOR
-      aggregated[item.email].status_open += item.status_open;
-      aggregated[item.email].status_draft += item.status_draft;
-      aggregated[item.email].status_submitted += item.status_submitted;
-      aggregated[item.email].status_approved += item.status_approved;
-      aggregated[item.email].status_rejected += item.status_rejected;
-      
-      const riilSelesaiLokal = item.status_approved + item.status_submitted + item.status_rejected;
-      
-      aggregated[item.email].detail_assignment.push({
-        assignment_code: item.assignment_code,
-        desa: item.desa,
-        target: item.target,
-        alokator: item.alokator || 0, // 🌟 BARU
-        status_open: item.status_open,
-        status_draft: item.status_draft,
-        status_submitted: item.status_submitted,
-        status_approved: item.status_approved,
-        status_rejected: item.status_rejected,
-        last_synced_at: item.last_synced_at,
-        progres_target: item.target > 0 ? Number((riilSelesaiLokal / item.target * 100).toFixed(2)) : 0, // 🌟 BARU
-        progres_alokator: item.alokator > 0 ? Number((riilSelesaiLokal / item.alokator * 100).toFixed(2)) : 0 // 🌟 BARU
-      });
-    });
-
-    return Object.values(aggregated).map(p => {
-      const totalRiilSelesai = p.status_approved + p.status_submitted + p.status_rejected;
-      return {
-        ...p,
-        progres_target: p.target > 0 ? Number((totalRiilSelesai / p.target * 100).toFixed(2)) : 0,
-        progres_alokator: p.alokator > 0 ? Number((totalRiilSelesai / p.alokator * 100).toFixed(2)) : 0
-      };
-    });
-  }, [dataPetugas, selectedKecamatan, selectedKelurahan]);
+  // filteredDataPetugas dihapus, logika dipindah ke masing-masing tab
 
   const chartDataHarian = useMemo(() => {
     const filteredTimeline = dataTimeline.filter(item => {
@@ -356,10 +312,10 @@ export default function UserDashboard() {
 
       {/* VIEWPORT CONTROLLER CONTAINER */}
       <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-2xl overflow-hidden">
-        {activeTab === 'desa' && <TabDesa dataDesa={filteredDataDesa} />}
-        {activeTab === 'petugas' && <TabPetugas dataPetugas={filteredDataPetugas} dataTimeline={dataTimeline} />}
+        {activeTab === 'desa' && <TabDesa dataDesa={filteredDataDesa} onExport={() => handleExportExcel(1)} />}
+        {activeTab === 'petugas' && <TabPetugas dataTimeline={dataTimeline} selectedKecamatan={selectedKecamatan} selectedKelurahan={selectedKelurahan} onExport={() => handleExportExcel(2)} />}
         {activeTab === 'harian' && <TabHarian chartData={chartDataHarian} />}
-        {activeTab === 'anomali' && <TabAnomali dataPetugas={dataPetugas} />}
+        {activeTab === 'anomali' && <TabAnomali selectedKecamatanGlobal={selectedKecamatan} selectedKelurahanGlobal={selectedKelurahan} />}
         <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
           <TabChatSQL />
         </div>
