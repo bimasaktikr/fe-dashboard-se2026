@@ -146,7 +146,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
             const pAlokator = alokator > 0 ? Math.round((progresRiil / alokator) * 100) : 0;
             const isAman = pTarget >= targetHarian;
 
-            const harusDikerjakanPerHari = Math.ceil((alokator - progresRiil) / sisaHari);
+            const harusDikerjakanPerHari = Math.max(0, Math.ceil((alokator - progresRiil) / sisaHari));
 
             return (
               <React.Fragment key={idx}>
