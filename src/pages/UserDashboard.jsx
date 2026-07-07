@@ -44,15 +44,15 @@ export default function UserDashboard() {
   // 1. DATA FETCHING FROM GERBANG API
   // ==========================================
   useEffect(() => {
-    Promise.all([
-      axios.get(`${apiUrl}/api/v1/dashboard/summary`),
-      axios.get(`${apiUrl}/api/v1/dashboard/timeline`) 
-    ])
-    .then(([resDesa, resTimeline]) => {
-      setDataDesa(resDesa.data?.data || []);
-      setDataTimeline(resTimeline.data?.data || []);
-    })
-    .catch(err => console.error("Gagal koordinasi data dengan server:", err));
+    // 1. Fetch Summary Global
+    axios.get(`${apiUrl}/api/v1/dashboard/summary/global`)
+      .then(res => setDataDesa(res.data?.data || []))
+      .catch(err => console.error("Gagal koordinasi data desa dengan server:", err));
+
+    // 2. Fetch Timeline (ini berat dan lama, jadi biarkan berjalan terpisah)
+    axios.get(`${apiUrl}/api/v1/dashboard/timeline`)
+      .then(res => setDataTimeline(res.data?.data || []))
+      .catch(err => console.error("Gagal koordinasi data timeline dengan server:", err));
   }, [apiUrl]);
 
   // ==========================================
@@ -153,7 +153,7 @@ export default function UserDashboard() {
       groupByDate[item.tanggal].Open += item.status_open;
     });
 
-    return Object.values(groupByDate);
+    return Object.values(groupByDate).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
   }, [dataTimeline, selectedKecamatan, selectedKelurahan]);
 
   const globalStats = useMemo(() => {
