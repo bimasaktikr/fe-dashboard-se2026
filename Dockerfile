@@ -1,9 +1,10 @@
 # Tahap 1: Build React
 FROM node:20-alpine as build
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
+COPY package.json package-lock.json* ./
+RUN npm ci
 COPY . .
+ENV NODE_ENV=production
 RUN npm run build
 
 # Tahap 2: Gunakan Nginx untuk menjalankan web super ringan

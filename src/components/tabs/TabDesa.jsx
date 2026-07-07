@@ -5,15 +5,15 @@ export default function TabDesa({ dataDesa }) {
   // 🌟 State Sorting (Default urutkan berdasarkan Capaian vs Target Utama)
   const [sortConfig, setSortConfig] = useState({ key: 'progres_target', direction: 'desc' });
 
-  // 🌟 KALKULATOR TARGET HARIAN DINAMIS (15 Juni - 75 Hari)
+  // 🌟 KALKULATOR TARGET HARIAN DINAMIS (15 Juni - 60 Hari)
   const getTargetHarian = () => {
     const startDate = new Date('2026-06-15T00:00:00');
     const today = new Date();
     if (today < startDate) return 0;
     const diffTime = today.getTime() - startDate.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 3600 * 24)) + 1;
-    if (diffDays > 75) return 100;
-    return (diffDays / 75) * 100;
+    if (diffDays > 60) return 100;
+    return (diffDays / 60) * 100;
   };
 
   const targetHarian = getTargetHarian();

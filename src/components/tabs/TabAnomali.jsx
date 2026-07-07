@@ -14,8 +14,8 @@ export default function TabAnomali({ dataPetugas }) {
     if (today < startDate) return 0;
     const diffTime = today.getTime() - startDate.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 3600 * 24)) + 1;
-    if (diffDays > 75) return 100;
-    return (diffDays / 75) * 100;
+    if (diffDays > 60) return 100;
+    return (diffDays / 60) * 100;
   };
   const targetHarian = getTargetHarian();
   const batasAnomaliHarian = targetHarian * 0.5; 
