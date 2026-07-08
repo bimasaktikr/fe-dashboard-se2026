@@ -18,7 +18,9 @@ export default function UploadPetugas() {
     formData.append('file', file);
 
     try {
-      const res = await axios.post('http://localhost:8000/api/v1/admin/upload-petugas', formData, {
+      const API_URL = import.meta.env.VITE_API_BASE_URL || '';
+      
+      const res = await axios.post(`${API_URL}/api/v1/admin/upload-petugas`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setMessage(res.data.message);
