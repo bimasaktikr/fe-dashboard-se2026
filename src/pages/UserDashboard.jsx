@@ -29,8 +29,19 @@ export default function UserDashboard() {
     if (diffDays > 75) return 100;
     return (diffDays / 75) * 100;
   };
+
   const targetHarian = getTargetHarian();
 
+  const handleExportExcel = (tabIndex) => {
+    const params = new URLSearchParams();
+    params.append("tab", tabIndex);
+    if (selectedKecamatan) params.append("kecamatan", selectedKecamatan);
+    if (selectedKelurahan) params.append("kelurahan", selectedKelurahan);
+
+    const downloadUrl = `${apiUrl}/api/v1/dashboard/export?${params.toString()}`;
+    window.open(downloadUrl, "_blank");
+  };
+  
   // ==========================================
   // 1. DATA FETCHING FROM GERBANG API
   // ==========================================
@@ -356,8 +367,8 @@ export default function UserDashboard() {
 
       {/* VIEWPORT CONTROLLER CONTAINER */}
       <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-2xl overflow-hidden">
-        {activeTab === 'desa' && <TabDesa dataDesa={filteredDataDesa} />}
-        {activeTab === 'petugas' && <TabPetugas dataPetugas={filteredDataPetugas} dataTimeline={dataTimeline} />}
+        {activeTab === 'desa' && <TabDesa dataDesa={filteredDataDesa} onExport={() => handleExportExcel(1)} />}
+        {activeTab === 'petugas' && <TabPetugas dataPetugas={filteredDataPetugas} dataTimeline={dataTimeline} onExport={() => handleExportExcel(2)} />}
         {activeTab === 'harian' && <TabHarian chartData={chartDataHarian} />}
         {activeTab === 'anomali' && <TabAnomali dataPetugas={dataPetugas} />}
         <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
