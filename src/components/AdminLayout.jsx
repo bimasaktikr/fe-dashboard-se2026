@@ -20,6 +20,8 @@ function Sidebar({ onLogout }) {
     { name: 'Tambah Petugas', path: '/admin/tambah-petugas', icon: <Users size={20} /> },
     { name: 'Transfer Petugas', path: '/admin/transfer-petugas', icon: <Users size={20} /> },
     { name: 'Data Historis', path: '/admin/historis', icon: <History size={20} /> },
+    { name: 'Update Assignment', path: '/admin/update-assignment', icon: <History size={20} /> },
+    
     { name: 'Trigger Bot FASIH', path: '/admin/trigger-bot', icon: <Bot size={20} /> },
     { name: '🧠 Latih Ulang AI', path: '/admin/ai-training', icon: <BrainCircuit size={20} /> },
   ];
