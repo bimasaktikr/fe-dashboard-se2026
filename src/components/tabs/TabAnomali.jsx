@@ -367,7 +367,7 @@ export default function TabAnomali({ selectedKecamatanGlobal, selectedKelurahanG
             disabled={currentPage === 1}
             className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
           >
-            Prev
+            Sebelumnya
           </button>
           <span className="text-slate-300">Hal {currentPage}/{totalPages}</span>
           <button
@@ -376,7 +376,7 @@ export default function TabAnomali({ selectedKecamatanGlobal, selectedKelurahanG
             disabled={currentPage === totalPages}
             className="px-3 py-1 rounded border border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800"
           >
-            Next
+            Selanjutnya
           </button>
           
           <button
