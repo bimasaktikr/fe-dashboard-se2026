@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download,ArrowDown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-export default function TabPetugas({ dataPetugas, dataTimeline }) {
+export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
   const [expandedRow, setExpandedRow] = useState(null);
   
   // 🌟 STATE UNTUK SORTING
@@ -97,8 +97,25 @@ export default function TabPetugas({ dataPetugas, dataTimeline }) {
     return Object.values(grouped).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
   };
 
+  const handleExportExcel = (tabIndex) => {
+    const params = new URLSearchParams();
+    params.append("tab", tabIndex);
+    if (selectedKecamatan) params.append("kecamatan", selectedKecamatan);
+    if (selectedKelurahan) params.append("kelurahan", selectedKelurahan);
+
+    const downloadUrl = `${apiUrl}/api/v1/dashboard/export?${params.toString()}`;
+    window.open(downloadUrl, "_blank");
+  };
+
   return (
     <div className="overflow-x-auto">
+      <div className="flex justify-between items-center bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
+        <span className="text-sm font-semibold text-slate-400">Total: <strong className="text-white font-bold">{dataPetugas?.length || 0}</strong> petugas terpantau</span>
+        <button onClick={onExport} className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-emerald-950/20 transition-all">
+          <Download size={16} />
+          <span>Unduh Excel</span>
+        </button>
+      </div>
       <table className="w-full text-left border-collapse min-w-[1000px]">
         <thead>
           <tr className="border-b border-slate-700 text-slate-400 text-[11px] uppercase font-bold tracking-wider">
