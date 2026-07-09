@@ -28,6 +28,7 @@ export default function UserDashboard() {
     if (diffDays > 75) return 100;
     return (diffDays / 75) * 100;
   };
+
   const targetHarian = getTargetHarian();
 
   const handleExportExcel = (tabIndex) => {
@@ -39,6 +40,7 @@ export default function UserDashboard() {
     const downloadUrl = `${apiUrl}/api/v1/dashboard/export?${params.toString()}`;
     window.open(downloadUrl, "_blank");
   };
+
 
   // ==========================================
   // 1. DATA FETCHING FROM GERBANG API

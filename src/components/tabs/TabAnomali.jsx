@@ -6,7 +6,7 @@ export default function TabAnomali({ selectedKecamatanGlobal, selectedKelurahanG
   const apiUrl = 'http://localhost:8000'; // FIXME: Revert to env for production
 
   // 🌟 STATE BARU: Acuan Anomali
-  const [acuanAnomali, setAcuanAnomali] = useState('target'); // 'target' atau 'alokator'
+  const [acuanAnomali, setAcuanAnomali] = useState('target'); // 'target', 'alokator', 'draft_high', 'draft_low'
   const [selectedKecamatan, setSelectedKecamatan] = useState(selectedKecamatanGlobal || '');
   const [selectedDesa, setSelectedDesa] = useState(selectedKelurahanGlobal || '');
 
@@ -133,7 +133,6 @@ export default function TabAnomali({ selectedKecamatanGlobal, selectedKelurahanG
 
   return (
     <div className="space-y-6">
-      {/* 🌟 PANEL KENDALI BARU */}
       <div className="bg-slate-900/50 p-5 rounded-xl border border-slate-700/50 flex flex-col md:flex-row gap-6 justify-between items-center">
         
         {/* Kiri: Header */}
@@ -143,7 +142,13 @@ export default function TabAnomali({ selectedKecamatanGlobal, selectedKelurahanG
           </div>
           <div>
             <h3 className="text-white font-bold">Radar Anomali</h3>
-            <p className="text-[11px] text-slate-400">Petugas dengan progres di bawah <strong className="text-rose-400">{batasAnomaliHarian.toFixed(1)}%</strong></p>
+            {acuanAnomali === 'draft_high' ? (
+               <p className="text-[11px] text-slate-400">Petugas dengan <strong className="text-amber-400">Draft &gt; 10 Dokumen</strong></p>
+            ) : acuanAnomali === 'draft_low' ? (
+               <p className="text-[11px] text-slate-400">Petugas dengan <strong className="text-teal-400">Draft &lt; 10 Dokumen</strong></p>
+            ) : (
+               <p className="text-[11px] text-slate-400">Petugas dengan progres di bawah <strong className="text-rose-400">{batasAnomaliHarian.toFixed(1)}%</strong></p>
+            )}
           </div>
         </div>
 
@@ -168,6 +173,8 @@ export default function TabAnomali({ selectedKecamatanGlobal, selectedKelurahanG
              >
                 <option value="target" className="bg-slate-900 text-blue-400">Di Bawah Target Utama</option>
                 <option value="alokator" className="bg-slate-900 text-purple-400">Di Bawah Alokator</option>
+                <option value="draft_high" className="bg-slate-900 text-amber-400">Draft &gt; 10 Dokumen</option>
+                <option value="draft_low" className="bg-slate-900 text-teal-400">Draft &lt; 10 Dokumen</option>
              </select>
           </div>
 
@@ -204,6 +211,11 @@ export default function TabAnomali({ selectedKecamatanGlobal, selectedKelurahanG
             </select>
           </div>
 
+          {(selectedKecamatan || selectedDesa) && (
+            <button onClick={() => { setSelectedKecamatan(''); setSelectedDesa(''); }} className="text-xs font-semibold text-slate-400 hover:text-white underline transition-colors">
+              Reset Wilayah
+            </button>
+          )}
         </div>
       </div>
 
@@ -263,7 +275,7 @@ export default function TabAnomali({ selectedKecamatanGlobal, selectedKelurahanG
                     <div className="bg-slate-800/50 p-4 rounded-full mb-3">
                       <AlertTriangle size={32} className="text-emerald-500/50" />
                     </div>
-                    <span className="font-semibold text-emerald-400">Aman & Terkendali, Komandan!</span>
+                    <span className="font-semibold text-emerald-400">Data Kosong, Komandan!</span>
                   </div>
                 </td>
               </tr>
@@ -285,7 +297,12 @@ export default function TabAnomali({ selectedKecamatanGlobal, selectedKelurahanG
                   <td className="p-4 text-center font-black font-mono text-purple-400">{item.alokator?.toLocaleString('id-ID')}</td>
                   <td className="p-4 text-center font-bold font-mono text-emerald-400">{item.status_approved?.toLocaleString('id-ID')}</td>
                   <td className="p-4 text-center font-semibold font-mono text-amber-400">{item.status_submitted?.toLocaleString('id-ID')}</td>
-                  <td className="p-4 text-center font-mono text-slate-300">{item.status_draft?.toLocaleString('id-ID')}</td>
+                  
+                  {/* 🌟 Kolom Draft akan menyala bila filter Draft dipilih */}
+                  <td className={`p-4 text-center font-mono font-bold ${(acuanAnomali === 'draft_high' || acuanAnomali === 'draft_low') ? 'text-amber-500 bg-amber-950/30' : 'text-slate-300'}`}>
+                    {item.status_draft?.toLocaleString('id-ID')}
+                  </td>
+
                   <td className="p-4 text-center font-mono text-rose-400">{item.status_rejected?.toLocaleString('id-ID')}</td>
                   
                   <td className="p-4">
@@ -293,16 +310,16 @@ export default function TabAnomali({ selectedKecamatanGlobal, selectedKelurahanG
                       {/* Baris Target */}
                       <div className="flex items-center gap-2" title={`Vs Target: ${item.progres_target}%`}>
                         <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700">
-                          <div className={`absolute top-0 left-0 h-full rounded-full ${item.progres_target < batasAnomaliHarian ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(item.progres_target, 100)}%` }}></div>
+                          <div className={`absolute top-0 left-0 h-full rounded-full ${acuanAnomali === 'target' && item.progres_target < batasAnomaliHarian ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(item.progres_target, 100)}%` }}></div>
                         </div>
-                        <span className={`text-[10px] font-bold w-7 text-right ${item.progres_target < batasAnomaliHarian ? 'text-rose-400' : 'text-blue-400'}`}>{item.progres_target}%</span>
+                        <span className={`text-[10px] font-bold w-7 text-right ${acuanAnomali === 'target' && item.progres_target < batasAnomaliHarian ? 'text-rose-400' : 'text-blue-400'}`}>{item.progres_target}%</span>
                       </div>
                       {/* Baris Alokator */}
                       <div className="flex items-center gap-2" title={`Vs Alokator: ${item.progres_alokator}%`}>
                         <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700">
-                          <div className={`absolute top-0 left-0 h-full rounded-full ${item.progres_alokator < batasAnomaliHarian ? 'bg-rose-500' : 'bg-purple-500'}`} style={{ width: `${Math.min(item.progres_alokator, 100)}%` }}></div>
+                          <div className={`absolute top-0 left-0 h-full rounded-full ${acuanAnomali === 'alokator' && item.progres_alokator < batasAnomaliHarian ? 'bg-rose-500' : 'bg-purple-500'}`} style={{ width: `${Math.min(item.progres_alokator, 100)}%` }}></div>
                         </div>
-                        <span className={`text-[10px] font-bold w-7 text-right ${item.progres_alokator < batasAnomaliHarian ? 'text-rose-400' : 'text-purple-400'}`}>{item.progres_alokator}%</span>
+                        <span className={`text-[10px] font-bold w-7 text-right ${acuanAnomali === 'alokator' && item.progres_alokator < batasAnomaliHarian ? 'text-rose-400' : 'text-purple-400'}`}>{item.progres_alokator}%</span>
                       </div>
                     </div>
                   </td>

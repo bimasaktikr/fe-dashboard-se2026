@@ -108,6 +108,16 @@ export default function TabPetugas({ dataTimeline, selectedKecamatan, selectedKe
     return Object.values(grouped).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
   };
 
+  const handleExportExcel = (tabIndex) => {
+    const params = new URLSearchParams();
+    params.append("tab", tabIndex);
+    if (selectedKecamatan) params.append("kecamatan", selectedKecamatan);
+    if (selectedKelurahan) params.append("kelurahan", selectedKelurahan);
+
+    const downloadUrl = `${apiUrl}/api/v1/dashboard/export?${params.toString()}`;
+    window.open(downloadUrl, "_blank");
+  };
+
   return (
     <div className="flex flex-col space-y-4">
       <div className="flex justify-between items-center bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
