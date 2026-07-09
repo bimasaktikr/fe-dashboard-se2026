@@ -349,7 +349,7 @@ export default function TabPetugas({ dataTimeline, selectedKecamatan, selectedKe
       {/* 🌟 PAGINATION CONTROLS */}
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs text-slate-400">
         <div>
-          Menampilkan baris ke-{(currentPage - 1) * rowsPerPage + 1} hingga {Math.min(currentPage * rowsPerPage, totalData)} dari {totalData} petugas (Server-Side)
+          Menampilkan baris ke-{(currentPage - 1) * rowsPerPage + 1} hingga {Math.min(currentPage * rowsPerPage, totalData)} dari {totalData} petugas
         </div>
         <div className="flex items-center gap-2">
           <label htmlFor="petugas-rows" className="text-slate-500">Baris:</label>
