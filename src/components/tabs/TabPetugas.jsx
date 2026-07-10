@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download,ArrowDown } from 'lucide-react';
+import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download,ArrowDown, Users , BarChart2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
@@ -118,6 +118,39 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
     window.open(downloadUrl, "_blank");
   };
 
+  // 🌟 TAMBAHKAN FUNGSI INI DI DALAM KOMPONEN TABPETUGAS.JSX
+  const getAnakBuahPML = (pmlEmail) => {
+    // 1. Cari data PML yang bersangkutan
+    const pml = dataPetugas.find(p => p.email === pmlEmail);
+    if (!pml || !pml.detail_assignment) return [];
+    
+    // 2. Ambil semua region_code yang diawasi PML
+    const s_codes_pml = new Set(pml.detail_assignment.map(d => d.assignment_code));
+    
+    // 3. Cari PCL yang memiliki assignment_code yang sama
+    const anakBuah = {};
+
+    dataPetugas.filter(p => p.role?.toUpperCase() === 'PCL').forEach(pcl => {
+      const slsMilikPclDiBawahPml = pcl.detail_assignment.filter(d => s_codes_pml.has(d.assignment_code));
+      
+      if (slsMilikPclDiBawahPml.length > 0) {
+        if (!anakBuah[pcl.email]) {
+          anakBuah[pcl.email] = {
+            nama: pcl.nama, total_sls: 0, target: 0, alokator: 0,
+            submitted: 0, approved: 0
+          };
+        }
+        slsMilikPclDiBawahPml.forEach(s => {
+          anakBuah[pcl.email].total_sls += 1;
+          anakBuah[pcl.email].target += (s.target || 0);
+          anakBuah[pcl.email].alokator += (s.alokator || 0);
+          anakBuah[pcl.email].submitted += (s.status_submitted || 0);
+          anakBuah[pcl.email].approved += (s.status_approved || 0);
+        });
+      }
+    });
+    return Object.values(anakBuah);
+  };
   
 
   // 🌟 INJEKSI 1: State Subtab & Filter Data PCL/PML
@@ -132,13 +165,6 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
 // Pastikan di tombol Anda memanggil ini:
   return (
     <div className="overflow-x-auto">
-      <div className="flex justify-between items-center bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
-        <span className="text-sm font-semibold text-slate-400">Total: <strong className="text-white font-bold">{dataPetugas?.length || 0}</strong> petugas terpantau</span>
-        <button onClick={onExport} className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-emerald-950/20 transition-all">
-          <Download size={16} />
-          <span>Unduh Excel</span>
-        </button>
-      </div>
       {/* 🌟 INJEKSI 3: Tombol Switcher PCL & PML */}
       <div className="flex space-x-2 mb-4">
         <button
@@ -158,6 +184,14 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
           Pengawasan PML
         </button>
       </div>
+      <div className="flex justify-between items-center bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
+        <span className="text-sm font-semibold text-slate-400">Total: <strong className="text-white font-bold">{dataPetugas?.length || 0}</strong> petugas terpantau</span>
+        <button onClick={onExport} className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-emerald-950/20 transition-all">
+          <Download size={16} />
+          <span>Unduh Excel</span>
+        </button>
+      </div>
+  
       <table className="w-full text-left border-collapse min-w-[1000px]">
         <thead>
           <tr className="border-b border-slate-700 text-slate-400 text-[11px] uppercase font-bold tracking-wider">
@@ -353,38 +387,67 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
 
                         ) : (
 
-                          /* --- TAMPILAN 2: JIKA PML (REKAP ANAK BUAH) --- */
-                          <div>
-                            <h4 className="text-xs font-bold text-purple-400 uppercase flex items-center gap-2 mb-3">
-                              <Users size={14} /> Rekap Kinerja PCL Bawahan:
-                            </h4>
-                            <table className="w-full text-sm bg-slate-950 border border-slate-800 rounded-lg">
-                              <thead>
-                                <tr className="text-slate-500 border-b border-slate-700/50 text-[10px] uppercase font-bold tracking-wider">
-                                  <th className="p-3 text-left">Nama PCL Lapangan</th>
-                                  <th className="p-3 text-center">Beban</th>
-                                  <th className="p-3 text-center text-blue-400">Target</th>
-                                  <th className="p-3 text-center text-emerald-400">Appv</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-800">
-                                {getAnakBuahPML(item.email).map((pcl, i) => (
-                                  <tr key={i} className="hover:bg-slate-800/40">
-                                    <td className="p-3 font-bold text-slate-200">{pcl.nama}</td>
-                                    <td className="p-3 text-center font-mono text-slate-400">{pcl.total_sls} SLS</td>
-                                    <td className="p-3 text-center font-mono text-blue-400">{pcl.target}</td>
-                                    <td className="p-3 text-center font-mono text-emerald-400 font-bold">{pcl.approved}</td>
-                                  </tr>
-                                ))}
-                                {getAnakBuahPML(item.email).length === 0 && (
-                                  <tr>
-                                    <td colSpan="4" className="p-4 text-center text-slate-500 italic text-xs">
-                                      Belum ada PCL yang ter-assign ke PML ini.
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
+                          <div className="p-6 space-y-8 animate-in fade-in zoom-in duration-300">
+                            
+                            {/* 1. TABEL REKAP PCL BAWAHAN (Tampilan Sama dengan PCL) */}
+                            <div>
+                              <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <Users size={14} /> Daftar Rekap Kinerja PCL Bawahan
+                              </h4>
+                              <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
+                                <table className="w-full text-left text-xs">
+                                  <thead className="bg-slate-800 text-slate-300 uppercase">
+                                    <tr>
+                                      <th className="p-3">Nama PCL</th>
+                                      <th className="p-3 text-center">Beban</th>
+                                      <th className="p-3 text-center text-blue-400">Target</th>
+                                      <th className="p-3 text-center text-emerald-400">Appv</th>
+                                      <th className="p-3 text-center text-rose-400">Rejc</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-800 font-mono">
+                                    {getAnakBuahPML(item.email).map((pcl, i) => (
+                                      <tr key={i} className="hover:bg-slate-800/40">
+                                        <td className="p-3 font-sans font-semibold text-slate-200">{pcl.nama}</td>
+                                        <td className="p-3 text-center">{pcl.total_sls}</td>
+                                        <td className="p-3 text-center text-blue-400">{pcl.target}</td>
+                                        <td className="p-3 text-center text-emerald-400 font-bold">{pcl.approved}</td>
+                                        <td className="p-3 text-center text-rose-400">{pcl.rejected}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+
+                            {/* 2. GRAFIK PERBANDINGAN PEROLEHAN (Multi-Line Chart) */}
+                            <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
+                              <h4 className="text-xs font-bold text-emerald-400 uppercase flex items-center gap-2 mb-4">
+                                <BarChart2 size={14} /> Perbandingan Perolehan (Approved) per PCL
+                              </h4>
+                              <div className="w-full h-[250px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart data={getChartDataForPetugas(item.email)}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                                    <XAxis dataKey="tanggal" stroke="#64748b" fontSize={10} />
+                                    <YAxis stroke="#64748b" fontSize={10} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }} />
+                                    
+                                    {/* 🌟 LOGIKA WARNA DINAMIS */}
+                                    {getAnakBuahPML(item.email).map((pcl, index) => (
+                                      <Line 
+                                        key={pcl.email}
+                                        type="monotone" 
+                                        dataKey={pcl.nama} // Pastikan dataTimeline Anda sudah diproses per petugas
+                                        stroke={`hsl(${index * 60}, 70%, 60%)`} // Warna unik otomatis
+                                        strokeWidth={2} 
+                                        dot={{ r: 2 }} 
+                                      />
+                                    ))}
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </div>
                           </div>
                         )}
 
