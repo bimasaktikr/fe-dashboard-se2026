@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download,ArrowDown, Users , BarChart2 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download,ArrowDown, Users , BarChart2} from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid , Legend} from 'recharts';
 
 export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
   const [expandedRow, setExpandedRow] = useState(null);
@@ -32,6 +32,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
     if (diffDays > 60) return 100;
     return (diffDays / 60) * 100;
   };
+
   const targetHarian = getTargetHarian();
 
   const [activeSubTab, setActiveSubTab] = useState('pcl');
@@ -51,9 +52,13 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
     let sortableItems = filteredData.map(item => {
       const total = (item.status_approved || 0) + (item.status_submitted || 0) + (item.status_rejected || 0);
       const target = item.target || 1;
+      const alokator = item.alokator || 0;
+      
       return { 
         ...item, 
-        progres_persen: Math.round((total / target) * 100) 
+        progres_persen: Math.round((total / target) * 100),
+        harusDikerjakanPerHari : Math.max(0, Math.ceil((alokator - total) / sisaHari))
+
       };
     });
 
@@ -167,8 +172,60 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
     setExpandedRow(null); // Tutup semua accordion saat ganti tab
   };
 
-// Pastikan di tombol Anda memanggil ini:
-  return (
+  const getChartDataForPML = (pmlEmail) => {
+      // 1. Ambil data PML dan Anak Buahnya
+      const pml = dataPetugas.find(p => p.email === pmlEmail);
+      if (!pml || !pml.detail_assignment || !dataTimeline) return [];
+      
+      const s_codes_pml = new Set(pml.detail_assignment.map(d => d.assignment_code));
+      const bawahanMap = {}; // Format: { "email_pcl": "Nama PCL" }
+
+      // 2. Petakan Email & Nama PCL Bawahan
+      dataPetugas.filter(p => p.role?.toUpperCase() === 'PCL').forEach(pcl => {
+        if (pcl.detail_assignment?.some(d => s_codes_pml.has(d.assignment_code))) {
+          bawahanMap[pcl.email] = pcl.nama;
+        }
+      });
+
+      const emailsBawahan = Object.keys(bawahanMap);
+      if (emailsBawahan.length === 0) return [];
+
+      // 3. Tarik data dari dataTimeline
+      const kelompokTanggal = {};
+
+      dataTimeline.forEach(tl => {
+        const emailTL = tl.email_petugas || tl.email;
+        const namaTL = tl.nama_petugas || tl.nama;
+
+        // Cek apakah data ini milik bawahan (Cek via email dulu, kalau gagal via nama)
+        const isMilikBawahan = emailsBawahan.includes(emailTL) || Object.values(bawahanMap).includes(namaTL);
+
+        if (isMilikBawahan) {
+            const tgl = tl.tanggal_data || tl.tanggal || "-";
+            
+            // Buat slot tanggal jika belum ada
+            if (!kelompokTanggal[tgl]) {
+              kelompokTanggal[tgl] = { tanggal: tgl };
+              // Set baseline 0 untuk semua bawahan
+              Object.values(bawahanMap).forEach(nama => { kelompokTanggal[tgl][nama] = 0; });
+            }
+
+            // Tentukan key nama yang tepat
+            let keyNama = bawahanMap[emailTL] || Object.values(bawahanMap).find(n => n === namaTL);
+
+            if (keyNama) {
+              // Tambahkan angka approved
+              kelompokTanggal[tgl][keyNama] += (tl.status_approved || tl.approved || 0);
+            }
+        }
+      });
+
+      // Urutkan berdasarkan tanggal
+      return Object.values(kelompokTanggal).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+    };
+
+
+return (
     <div className="overflow-x-auto">
       {/* 🌟 INJEKSI 3: Tombol Switcher PCL & PML */}
       <div className="flex space-x-2 mb-4">
@@ -219,8 +276,8 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
             <th className="p-4 text-center text-rose-400 cursor-pointer hover:bg-rose-900/20 transition-colors" onClick={() => requestSort('status_rejected')}>
               <div className="flex items-center justify-center">Rejc {getSortIcon('status_rejected')}</div>
             </th>
-            <th className="p-4 text-center text-teal-400 cursor-pointer hover:bg-teal-900/20 transition-colors" title="Target yg harus dikerjakan per hari (Open+Draft / Sisa Hari)">
-              <div className="flex items-center justify-center">Tgt Harian</div>
+            <th className="p-4 text-center text-teal-400 cursor-pointer hover:bg-teal-900/20 transition-colors" onClick={() => requestSort('harusDikerjakanPerHari')} title="Target yg harus dikerjakan per hari (Open+Draft / Sisa Hari)">
+              <div className="flex items-center justify-center">Tgt Harian {getSortIcon('harusDikerjakanPerHari')}</div>
             </th>
             <th className="p-4 w-1/4 cursor-pointer hover:bg-slate-800/50 transition-colors text-center" onClick={() => requestSort('progres_persen')}>
               <div className="flex items-center justify-center">Capaian Kinerja Total {getSortIcon('progres_persen')}</div>
@@ -304,161 +361,93 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
                 </tr>
 
                 {/* 🌟 SUB-BARIS AKORDEON */}
-                {isExpanded && (
-                  <tr className="bg-slate-900/80 border-l-2 border-indigo-500">
-                    <td colSpan="9" className="p-4">
+               {isExpanded && (
+                <tr className="bg-slate-900/80 border-l-2 border-indigo-500">
+                  <td colSpan="9" className="p-4">
+                    
+                    {/* ========================================================================= */}
+                    {/* 🟢 TAMPILAN JIKA TAB PCL AKTIF (TIDAK DIRUBAH SAMA SEKALI)                */}
+                    {/* ========================================================================= */}
+                    {activeSubTab === 'pcl' && (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pl-12 pr-4 py-2">
                         
-                        {/* ============================================================== */}
-                        {/* KOLOM KIRI: CABANG LOGIKA UNTUK PCL ATAU PML                   */}
-                        {/* ============================================================== */}
-                        {activeSubTab === 'pcl' ? (
-                          
-                          /* --- TAMPILAN 1: JIKA PCL (KODE ASLI KOMANDAN) --- */
-                          <div>
-                            <h4 className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-2 mb-3">
-                              <Map size={14} /> Detail Penugasan Region (SLS):
-                            </h4>
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="text-slate-500 border-b border-slate-700/50 text-[10px] uppercase font-bold tracking-wider">
-                                  <th className="pb-2 text-left">Kode SLS & Waktu Sync</th>
-                                  <th className="pb-2 text-center">Beban</th>
-                                  <th className="pb-2 text-center text-emerald-400">Appv</th>
-                                  <th className="pb-2 text-center text-amber-400">Subm</th>
-                                  <th className="pb-2 text-center text-slate-300">Drft</th>
-                                  <th className="pb-2 text-center text-rose-400">Rejc</th>
-                                  <th className="pb-2 text-center w-32">Dual Progress</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {item.detail_assignment?.map((assign, i) => {
-                                  const assignTarget = assign.target || 0;
-                                  const assignAlokator = assign.alokator || 0;
-                                  const assignSelesai = (assign.status_approved || 0) + (assign.status_submitted || 0) + (assign.status_rejected || 0);
-                                  const pAssignTarget = assignTarget > 0 ? Math.round((assignSelesai / assignTarget) * 100) : 0;
-                                  const pAssignAlokator = assignAlokator > 0 ? Math.round((assignSelesai / assignAlokator) * 100) : 0;
-                                  const isAssignAman = pAssignTarget >= targetHarian;
+                        {/* KOLOM KIRI PCL: TABEL SLS */}
+                        <div>
+                          <h4 className="text-xs font-bold text-indigo-400 uppercase flex items-center gap-2 mb-3">
+                            <Map size={14} /> Detail Penugasan Region (SLS):
+                          </h4>
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="text-slate-500 border-b border-slate-700/50 text-[10px] uppercase font-bold tracking-wider">
+                                <th className="pb-2 text-left">Kode SLS & Waktu Sync</th>
+                                <th className="pb-2 text-center">Beban</th>
+                                <th className="pb-2 text-center text-emerald-400">Appv</th>
+                                <th className="pb-2 text-center text-amber-400">Subm</th>
+                                <th className="pb-2 text-center text-slate-300">Drft</th>
+                                <th className="pb-2 text-center text-rose-400">Rejc</th>
+                                <th className="pb-2 text-center w-32">Dual Progress</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {item.detail_assignment?.map((assign, i) => {
+                                const assignTarget = assign.target || 0;
+                                const assignAlokator = assign.alokator || 0;
+                                const assignSelesai = (assign.status_approved || 0) + (assign.status_submitted || 0) + (assign.status_rejected || 0);
+                                const pAssignTarget = assignTarget > 0 ? Math.round((assignSelesai / assignTarget) * 100) : 0;
+                                const pAssignAlokator = assignAlokator > 0 ? Math.round((assignSelesai / assignAlokator) * 100) : 0;
+                                const isAssignAman = pAssignTarget >= targetHarian;
+                                
+                                return(
+                                <tr key={i} className="border-b border-slate-700/30 last:border-0 hover:bg-slate-800/40">
+                                  <td className="py-2 text-indigo-200 font-mono text-[11px] leading-tight">
+                                    <span className="text-slate-400">{assign.assignment_code}</span> <br/>
+                                    <span className="font-bold block mb-1.5">{assign.desa}</span>
+                                    {assign.last_synced_at !== "-" ? (
+                                      <span className="inline-flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded text-emerald-400 border border-slate-700 font-medium whitespace-nowrap" title="Bot Sync Terakhir">
+                                        <Clock size={10} className="text-emerald-500" />
+                                        {formatLengkapWaktu(assign.last_synced_at)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-600">- Belum Sync</span>
+                                    )}
+                                  </td>
                                   
-                                  return(
-                                  <tr key={i} className="border-b border-slate-700/30 last:border-0 hover:bg-slate-800/40">
-                                    <td className="py-2 text-indigo-200 font-mono text-[11px] leading-tight">
-                                      <span className="text-slate-400">{assign.assignment_code}</span> <br/>
-                                      <span className="font-bold block mb-1.5">{assign.desa}</span>
-                                      {assign.last_synced_at !== "-" ? (
-                                        <span className="inline-flex items-center gap-1 bg-slate-900 px-1.5 py-0.5 rounded text-emerald-400 border border-slate-700 font-medium whitespace-nowrap" title="Bot Sync Terakhir">
-                                          <Clock size={10} className="text-emerald-500" />
-                                          {formatLengkapWaktu(assign.last_synced_at)}
-                                        </span>
-                                      ) : (
-                                        <span className="text-[10px] text-slate-600">- Belum Sync</span>
-                                      )}
-                                    </td>
-                                    
-                                    <td className="py-2 text-center">
-                                      <div className="flex flex-col items-center justify-center space-y-1">
-                                        <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">T: {assignTarget.toLocaleString('id-ID')}</span>
-                                        <span className="text-[9px] font-bold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">A: {assignAlokator.toLocaleString('id-ID')}</span>
-                                      </div>
-                                    </td>
+                                  <td className="py-2 text-center">
+                                    <div className="flex flex-col items-center justify-center space-y-1">
+                                      <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">T: {assignTarget.toLocaleString('id-ID')}</span>
+                                      <span className="text-[9px] font-bold text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">A: {assignAlokator.toLocaleString('id-ID')}</span>
+                                    </div>
+                                  </td>
 
-                                    <td className="py-2 text-center font-mono text-emerald-500/80">{assign.status_approved}</td>
-                                    <td className="py-2 text-center font-mono text-amber-500/80">{assign.status_submitted}</td>
-                                    <td className="py-2 text-center font-mono text-slate-300">{assign.status_draft}</td>
-                                    <td className="py-2 text-center font-mono text-rose-500/80">{assign.status_rejected}</td>
-                                    
-                                    <td className="py-2 w-32">
-                                      <div className="space-y-1.5">
-                                        <div className="flex items-center gap-2" title={`Vs Target: ${pAssignTarget}%`}>
-                                          <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700">
-                                            <div className={`absolute top-0 left-0 h-full rounded-full ${isAssignAman ? 'bg-blue-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(pAssignTarget, 100)}%` }}></div>
-                                          </div>
-                                          <span className={`text-[9px] font-bold w-6 text-right ${isAssignAman ? 'text-blue-400' : 'text-rose-400'}`}>{pAssignTarget}%</span>
+                                  <td className="py-2 text-center font-mono text-emerald-500/80">{assign.status_approved}</td>
+                                  <td className="py-2 text-center font-mono text-amber-500/80">{assign.status_submitted}</td>
+                                  <td className="py-2 text-center font-mono text-slate-300">{assign.status_draft}</td>
+                                  <td className="py-2 text-center font-mono text-rose-500/80">{assign.status_rejected}</td>
+                                  
+                                  <td className="py-2 w-32">
+                                    <div className="space-y-1.5">
+                                      <div className="flex items-center gap-2" title={`Vs Target: ${pAssignTarget}%`}>
+                                        <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700">
+                                          <div className={`absolute top-0 left-0 h-full rounded-full ${isAssignAman ? 'bg-blue-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(pAssignTarget, 100)}%` }}></div>
                                         </div>
-                                        <div className="flex items-center gap-2" title={`Vs Alokator: ${pAssignAlokator}%`}>
-                                          <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700">
-                                            <div className="absolute top-0 left-0 h-full bg-purple-500 rounded-full" style={{ width: `${Math.min(pAssignAlokator, 100)}%` }}></div>
-                                          </div>
-                                          <span className="text-[9px] font-bold text-purple-400 w-6 text-right">{pAssignAlokator}%</span>
-                                        </div>
+                                        <span className={`text-[9px] font-bold w-6 text-right ${isAssignAman ? 'text-blue-400' : 'text-rose-400'}`}>{pAssignTarget}%</span>
                                       </div>
-                                    </td>
-                                  </tr>
-                                  )
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
+                                      <div className="flex items-center gap-2" title={`Vs Alokator: ${pAssignAlokator}%`}>
+                                        <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700">
+                                          <div className="absolute top-0 left-0 h-full bg-purple-500 rounded-full" style={{ width: `${Math.min(pAssignAlokator, 100)}%` }}></div>
+                                        </div>
+                                        <span className="text-[9px] font-bold text-purple-400 w-6 text-right">{pAssignAlokator}%</span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
 
-                        ) : (
-
-                          <div className="p-6 space-y-8 animate-in fade-in zoom-in duration-300">
-                            
-                            {/* 1. TABEL REKAP PCL BAWAHAN (Tampilan Sama dengan PCL) */}
-                            <div>
-                              <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                <Users size={14} /> Daftar Rekap Kinerja PCL Bawahan
-                              </h4>
-                              <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden">
-                                <table className="w-full text-left text-xs">
-                                  <thead className="bg-slate-800 text-slate-300 uppercase">
-                                    <tr>
-                                      <th className="p-3">Nama PCL</th>
-                                      <th className="p-3 text-center">Beban</th>
-                                      <th className="p-3 text-center text-blue-400">Target</th>
-                                      <th className="p-3 text-center text-emerald-400">Appv</th>
-                                      <th className="p-3 text-center text-rose-400">Rejc</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-800 font-mono">
-                                    {getAnakBuahPML(item.email).map((pcl, i) => (
-                                      <tr key={i} className="hover:bg-slate-800/40">
-                                        <td className="p-3 font-sans font-semibold text-slate-200">{pcl.nama}</td>
-                                        <td className="p-3 text-center">{pcl.total_sls}</td>
-                                        <td className="p-3 text-center text-blue-400">{pcl.target}</td>
-                                        <td className="p-3 text-center text-emerald-400 font-bold">{pcl.approved}</td>
-                                        <td className="p-3 text-center text-rose-400">{pcl.rejected}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-
-                            {/* 2. GRAFIK PERBANDINGAN PEROLEHAN (Multi-Line Chart) */}
-                            <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
-                              <h4 className="text-xs font-bold text-emerald-400 uppercase flex items-center gap-2 mb-4">
-                                <BarChart2 size={14} /> Perbandingan Perolehan (Approved) per PCL
-                              </h4>
-                              <div className="w-full h-[250px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart data={getChartDataForPetugas(item.email)}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                                    <XAxis dataKey="tanggal" stroke="#64748b" fontSize={10} />
-                                    <YAxis stroke="#64748b" fontSize={10} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }} />
-                                    
-                                    {/* 🌟 LOGIKA WARNA DINAMIS */}
-                                    {getAnakBuahPML(item.email).map((pcl, index) => (
-                                      <Line 
-                                        key={pcl.email}
-                                        type="monotone" 
-                                        dataKey={pcl.nama} // Pastikan dataTimeline Anda sudah diproses per petugas
-                                        stroke={`hsl(${index * 60}, 70%, 60%)`} // Warna unik otomatis
-                                        strokeWidth={2} 
-                                        dot={{ r: 2 }} 
-                                      />
-                                    ))}
-                                  </LineChart>
-                                </ResponsiveContainer>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* ============================================================== */}
-                        {/* KOLOM KANAN: CHART (ASLI KOMANDAN - MUNCUL DI KEDUANYA)        */}
-                        {/* ============================================================== */}
+                        {/* KOLOM KANAN PCL: GRAFIK HARIAN */}
                         <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
                           <h4 className="text-xs font-bold text-emerald-400 uppercase flex items-center gap-2 mb-4">
                             <TrendingUp size={14} /> Kecepatan Validasi Harian
@@ -478,9 +467,125 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
                         </div>
 
                       </div>
-                    </td>
-                  </tr>
-                )}
+                    )}
+
+                    {/* ========================================================================= */}
+                    {/* 🟣 TAMPILAN JIKA TAB PML AKTIF (GRID BARU KHUSUS PML)                     */}
+                    {/* ========================================================================= */}
+                    {activeSubTab === 'pml' && (
+                      <div className="flex flex-col gap-6 pl-12 pr-4 py-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                        
+                        {/* BAGIAN ATAS: TABEL REKAP PCL BAWAHAN */}
+                        <div className="w-full">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-2">
+                              <Users size={14} /> Tim PCL di Bawah Pengawasan
+                            </h4>
+                            <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20 font-mono">
+                              {getAnakBuahPML(item.email).length} PCL Aktif
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden shadow-inner">
+                            <table className="w-full text-left text-xs">
+                              <thead className="bg-slate-900/80 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
+                                <tr>
+                                  <th className="p-3">Nama PCL</th>
+                                  <th className="p-3 text-center">Beban (SLS)</th>
+                                  <th className="p-3 text-center text-emerald-400">Approved</th>
+                                  <th className="p-3 text-center text-amber-400">Submitted</th>
+                                  <th className="p-3 text-center text-slate-400">Draft</th>
+                                  <th className="p-3 text-center text-rose-400">Rejected</th>
+                                  <th className="p-3 text-center text-teal-400 w-32">Capaian Total</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/50 font-mono text-slate-300">
+                                {getAnakBuahPML(item.email).length === 0 ? (
+                                  <tr>
+                                    <td colSpan={7} className="p-4 text-center text-slate-500 font-sans italic">
+                                      Tidak ada PCL yang terikat dengan wilayah tugas PML ini.
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  getAnakBuahPML(item.email).map((anak, i) => {
+                                    const totalSelesai = (anak.approved || 0) + (anak.submitted || 0) + (anak.rejected || 0);
+                                    const persenCapaian = anak.target > 0 ? Math.round((totalSelesai / anak.target) * 100) : 0;
+                                    
+                                    return (
+                                      <tr key={i} className="hover:bg-slate-800/40 transition-colors">
+                                        <td className="p-3 font-sans font-semibold text-slate-200">{anak.nama}</td>
+                                        <td className="p-3 text-center text-slate-400">{anak.total_sls}</td>
+                                        <td className="p-3 text-center text-emerald-400 font-bold">{anak.approved}</td>
+                                        <td className="p-3 text-center text-amber-400">{anak.submitted}</td>
+                                        <td className="p-3 text-center text-slate-500">{anak.draft}</td>
+                                        <td className="p-3 text-center text-rose-400">{anak.rejected}</td>
+                                        <td className="p-3 text-center">
+                                          <div className="flex items-center justify-center gap-2">
+                                            <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700 max-w-[60px]">
+                                              <div className={`absolute top-0 left-0 h-full rounded-full ${persenCapaian >= 100 ? 'bg-emerald-500' : persenCapaian >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(persenCapaian, 100)}%` }}></div>
+                                            </div>
+                                            <span className={`text-[10px] font-bold w-8 text-right ${persenCapaian >= 100 ? 'text-emerald-400' : persenCapaian >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                              {persenCapaian}%
+                                            </span>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        {/* BAGIAN BAWAH: GRAFIK KOMPARASI ANAK BUAH (Punya banyak ruang sekarang) */}
+                        <div className="w-full">
+                          <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2 mb-3">
+                            <BarChart2 size={14} /> Radar Perolehan Harian Tim (Approved)
+                          </h4>
+                          
+                          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 h-[280px] w-full">
+                            {getChartDataForPML(item.email).length === 0 ? (
+                              <div className="flex flex-col items-center justify-center h-full text-slate-500 italic text-xs">
+                                <TrendingUp size={24} className="mb-2 opacity-20" />
+                                <span>Menunggu aktivitas sinkronisasi dari lapangan...</span>
+                              </div>
+                            ) : (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={getChartDataForPML(item.email)}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                  <XAxis dataKey="tanggal" stroke="#475569" fontSize={10} tickLine={false} tickMargin={8} />
+                                  <YAxis stroke="#475569" fontSize={10} tickLine={false} axisLine={false} width={30} />
+                                  <Tooltip 
+                                    contentStyle={{ backgroundColor: '#020617', borderColor: '#334155', borderRadius: '8px' }}
+                                    labelStyle={{ color: '#94a3b8', fontWeight: 'bold', fontSize: '11px', marginBottom: '8px' }}
+                                    itemStyle={{ fontSize: '12px', padding: '2px 0' }}
+                                  />
+                                  <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingBottom: '10px' }} />
+                                  
+                                  {getAnakBuahPML(item.email).map((anak, index) => (
+                                    <Line
+                                      key={anak.nama}
+                                      type="monotone"
+                                      dataKey={anak.nama}
+                                      stroke={`hsl(${(index * 137) % 360}, 85%, 60%)`} 
+                                      strokeWidth={2.5}
+                                      dot={{ r: 3, strokeWidth: 1 }}
+                                      activeDot={{ r: 6, strokeWidth: 0 }}
+                                    />
+                                  ))}
+                                </LineChart>
+                              </ResponsiveContainer>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+                    )}
+
+                  </td>
+                </tr>
+              )}
               </React.Fragment>
             );
           })}
