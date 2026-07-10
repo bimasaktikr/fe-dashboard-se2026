@@ -47,30 +47,35 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
 
   // 2. SORT HASIL FILTERNYA (Bukan dari dataPetugas mentah lagi!)
   const sortedDataPetugas = useMemo(() => {
-    let sortableItems = [...filteredData]; // 🌟 KUNCI: Ambil dari filteredData
+    // Tambahkan kalkulasi progres ke setiap item sebelum disortir
+    let sortableItems = filteredData.map(item => {
+      const total = (item.status_approved || 0) + (item.status_submitted || 0) + (item.status_rejected || 0);
+      const target = item.target || 1;
+      return { 
+        ...item, 
+        progres_persen: Math.round((total / target) * 100) 
+      };
+    });
+
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
-        let aValue = a[sortConfig.key];
-        let bValue = b[sortConfig.key];
+        let aValue = a[sortConfig.key] || 0;
+        let bValue = b[sortConfig.key] || 0;
 
         if (typeof aValue === 'string') {
           return sortConfig.direction === 'asc' 
             ? aValue.localeCompare(bValue) 
             : bValue.localeCompare(aValue);
         }
-
-        aValue = Number(aValue) || 0;
-        bValue = Number(bValue) || 0;
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
       });
     }
     return sortableItems;
-  }, [filteredData, sortConfig]); // 🌟 Dependensi berubah jadi filteredData
-
+  }, [filteredData, sortConfig]);
+  
+  // Tambahkan fungsi ini di dalam komponen TabPetugas
   const requestSort = (key) => {
-    let direction = 'desc';
+    let direction = 'desc'; // Default urutan turun
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
       direction = 'asc';
     }
