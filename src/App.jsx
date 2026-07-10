@@ -13,6 +13,7 @@ import TriggerBot from './pages/admin/TriggerBot';
 import AITraining from './pages/admin/AITraining';
 import TambahPetugas from './pages/admin/TambahPetugas';
 import TransferPetugas from './pages/admin/TransferPetugas';
+import UpdateAssignment from './pages/admin/UpdateAssignment';
 
 
 
@@ -33,6 +34,7 @@ function App() {
           <Route path="historis" element={<UploadHistoris />} />
           <Route path="trigger-bot" element={<TriggerBot />} />
           <Route path="ai-training" element={<AITraining />} />
+          <Route path="update-assignment" element={<UpdateAssignment />} /> {/* Tambah rute baru ini */}
         </Route>
       </Routes>
     </BrowserRouter>
