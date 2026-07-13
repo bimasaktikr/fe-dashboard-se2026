@@ -1,12 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import axios from 'axios';
 import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download,ArrowDown, Users , BarChart2} from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid , Legend} from 'recharts';
 
-export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
+export default function TabPetugas({ dataTimeline, selectedKecamatan, selectedKelurahan, onExport }) {
   const [expandedRow, setExpandedRow] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [serverData, setServerData] = useState([]);
+  const [totalData, setTotalData] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const apiUrl = 'http://localhost:8000';
   
   // 🌟 STATE UNTUK SORTING
   const [sortConfig, setSortConfig] = useState({ key: 'progres_persen', direction: 'desc' });
+  
+  // Reset page when sorting or rows per page changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [sortConfig, rowsPerPage]);
 
   const toggleRow = (email) => {
     setExpandedRow(expandedRow === email ? null : email);
@@ -37,47 +50,29 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
 
   const [activeSubTab, setActiveSubTab] = useState('pcl');
 
-  // 1. FILTER DULU BERDASARKAN TAB AKTIF
-  const filteredData = useMemo(() => {
-    if (!dataPetugas) return [];
-    return dataPetugas.filter(item => {
-      const role = item.role ? item.role.toUpperCase() : 'PCL';
-      return activeSubTab === 'pcl' ? role === 'PCL' : role === 'PML';
-    });
-  }, [dataPetugas, activeSubTab]);
+  // 🌟 SERVER-SIDE FETCHING
+  useEffect(() => {
+    setIsLoading(true);
+    axios.get(`${apiUrl}/api/v1/dashboard/petugas`, {
+      params: {
+        page: currentPage,
+        limit: rowsPerPage,
+        sort_by: sortConfig?.key || 'progres_persen',
+        order: sortConfig?.direction || 'desc',
+        kecamatan: selectedKecamatan || '',
+        desa: selectedKelurahan || '',
+        role: activeSubTab
+      }
+    })
+    .then(res => {
+      setServerData(res.data.data || []);
+      setTotalData(res.data.total_data || 0);
+      setTotalPages(res.data.total_pages || 1);
+    })
+    .catch(err => console.error("Error fetching paginated petugas:", err))
+    .finally(() => setIsLoading(false));
+  }, [currentPage, rowsPerPage, sortConfig, selectedKecamatan, selectedKelurahan, apiUrl, activeSubTab]);
 
-  // 2. SORT HASIL FILTERNYA (Bukan dari dataPetugas mentah lagi!)
-  const sortedDataPetugas = useMemo(() => {
-    // Tambahkan kalkulasi progres ke setiap item sebelum disortir
-    let sortableItems = filteredData.map(item => {
-      const total = (item.status_approved || 0) + (item.status_submitted || 0) + (item.status_rejected || 0);
-      const target = item.target || 1;
-      const alokator = item.alokator || 0;
-      
-      return { 
-        ...item, 
-        progres_persen: Math.round((total / target) * 100),
-        harusDikerjakanPerHari : Math.max(0, Math.ceil((alokator - total) / sisaHari))
-
-      };
-    });
-
-    if (sortConfig !== null) {
-      sortableItems.sort((a, b) => {
-        let aValue = a[sortConfig.key] || 0;
-        let bValue = b[sortConfig.key] || 0;
-
-        if (typeof aValue === 'string') {
-          return sortConfig.direction === 'asc' 
-            ? aValue.localeCompare(bValue) 
-            : bValue.localeCompare(aValue);
-        }
-        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-      });
-    }
-    return sortableItems;
-  }, [filteredData, sortConfig]);
-  
   // Tambahkan fungsi ini di dalam komponen TabPetugas
   const requestSort = (key) => {
     let direction = 'desc'; // Default urutan turun
@@ -128,40 +123,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
     window.open(downloadUrl, "_blank");
   };
 
-  // 🌟 TAMBAHKAN FUNGSI INI DI DALAM KOMPONEN TABPETUGAS.JSX
-  const getAnakBuahPML = (pmlEmail) => {
-    // 1. Cari data PML yang bersangkutan
-    const pml = dataPetugas.find(p => p.email === pmlEmail);
-    if (!pml || !pml.detail_assignment) return [];
-    
-    // 2. Ambil semua region_code yang diawasi PML
-    const s_codes_pml = new Set(pml.detail_assignment.map(d => d.assignment_code));
-    
-    // 3. Cari PCL yang memiliki assignment_code yang sama
-    const anakBuah = {};
 
-    dataPetugas.filter(p => p.role?.toUpperCase() === 'PCL').forEach(pcl => {
-      const slsMilikPclDiBawahPml = pcl.detail_assignment.filter(d => s_codes_pml.has(d.assignment_code));
-      
-      if (slsMilikPclDiBawahPml.length > 0) {
-        if (!anakBuah[pcl.email]) {
-          anakBuah[pcl.email] = {
-            nama: pcl.nama, total_sls: 0, target: 0, alokator: 0,
-            submitted: 0, approved: 0
-          };
-        }
-        slsMilikPclDiBawahPml.forEach(s => {
-          anakBuah[pcl.email].total_sls += 1;
-          anakBuah[pcl.email].target += (s.target || 0);
-          anakBuah[pcl.email].alokator += (s.alokator || 0);
-          anakBuah[pcl.email].submitted += (s.status_submitted || 0);
-          anakBuah[pcl.email].approved += (s.status_approved || 0);
-        });
-      }
-    });
-    return Object.values(anakBuah);
-  };
-  
 
   // 🌟 INJEKSI 1: State Subtab & Filter Data PCL/PML
 
@@ -173,60 +135,39 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
   };
 
   const getChartDataForPML = (pmlEmail) => {
-      // 1. Ambil data PML dan Anak Buahnya
-      const pml = dataPetugas.find(p => p.email === pmlEmail);
-      if (!pml || !pml.detail_assignment || !dataTimeline) return [];
-      
-      const s_codes_pml = new Set(pml.detail_assignment.map(d => d.assignment_code));
-      const bawahanMap = {}; // Format: { "email_pcl": "Nama PCL" }
+        const pmlItem = serverData.find(p => p.email === pmlEmail);
+        if (!pmlItem || !pmlItem.anakBuah || !dataTimeline) return [];
+        
+        const bawahanMap = {};
+        pmlItem.anakBuah.forEach(pcl => {
+            bawahanMap[pcl.email] = pcl.nama;
+        });
 
-      // 2. Petakan Email & Nama PCL Bawahan
-      dataPetugas.filter(p => p.role?.toUpperCase() === 'PCL').forEach(pcl => {
-        if (pcl.detail_assignment?.some(d => s_codes_pml.has(d.assignment_code))) {
-          bawahanMap[pcl.email] = pcl.nama;
-        }
-      });
-
-      const emailsBawahan = Object.keys(bawahanMap);
-      if (emailsBawahan.length === 0) return [];
-
-      // 3. Tarik data dari dataTimeline
-      const kelompokTanggal = {};
-
-      dataTimeline.forEach(tl => {
-        const emailTL = tl.email_petugas || tl.email;
-        const namaTL = tl.nama_petugas || tl.nama;
-
-        // Cek apakah data ini milik bawahan (Cek via email dulu, kalau gagal via nama)
-        const isMilikBawahan = emailsBawahan.includes(emailTL) || Object.values(bawahanMap).includes(namaTL);
-
-        if (isMilikBawahan) {
-            const tgl = tl.tanggal_data || tl.tanggal || "-";
-            
-            // Buat slot tanggal jika belum ada
-            if (!kelompokTanggal[tgl]) {
-              kelompokTanggal[tgl] = { tanggal: tgl };
-              // Set baseline 0 untuk semua bawahan
-              Object.values(bawahanMap).forEach(nama => { kelompokTanggal[tgl][nama] = 0; });
+        const result = [];
+        dataTimeline.forEach(timeline => {
+          const row = { tanggal: timeline.tanggal };
+          let hasData = false;
+          
+          Object.entries(bawahanMap).forEach(([pclEmail, pclNama]) => {
+            const pclDiTimeline = timeline.detail_petugas?.find(pt => pt.email === pclEmail);
+            if (pclDiTimeline) {
+               row[pclNama] = pclDiTimeline.Approved || 0;
+               hasData = true;
             }
+          });
+          
+          if (hasData) {
+            result.push(row);
+          }
+        });
 
-            // Tentukan key nama yang tepat
-            let keyNama = bawahanMap[emailTL] || Object.values(bawahanMap).find(n => n === namaTL);
-
-            if (keyNama) {
-              // Tambahkan angka approved
-              kelompokTanggal[tgl][keyNama] += (tl.status_approved || tl.approved || 0);
-            }
-        }
-      });
-
-      // Urutkan berdasarkan tanggal
-      return Object.values(kelompokTanggal).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+        return result;
     };
 
 
 return (
-    <div className="overflow-x-auto">
+    <div className="flex flex-col space-y-4">
+      <div className="overflow-x-auto">
       {/* 🌟 INJEKSI 3: Tombol Switcher PCL & PML */}
       <div className="flex space-x-2 mb-4">
         <button
@@ -247,7 +188,7 @@ return (
         </button>
       </div>
       <div className="flex justify-between items-center bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
-        <span className="text-sm font-semibold text-slate-400">Total: <strong className="text-white font-bold">{dataPetugas?.length || 0}</strong> petugas terpantau</span>
+        <span className="text-sm font-semibold text-slate-400">Total: <strong className="text-white font-bold">{totalData || 0}</strong> petugas terpantau</span>
         <button onClick={onExport} className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-emerald-950/20 transition-all">
           <Download size={16} />
           <span>Unduh Excel</span>
@@ -285,7 +226,7 @@ return (
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-700/50 text-slate-300">
-          {sortedDataPetugas.map((item, idx) => {
+          {serverData.map((item, idx) => {
             const isExpanded = expandedRow === item.email;
             
             const target = item.target || 0;
@@ -592,5 +533,45 @@ return (
         </tbody>
       </table>
     </div>
+    {/* 🌟 PAGINATION CONTROLS */}
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-slate-400">Tampilkan</span>
+        <select 
+          value={rowsPerPage} 
+          onChange={(e) => setRowsPerPage(Number(e.target.value))}
+          className="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        >
+          <option value={10}>10</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+        <span className="text-sm text-slate-400">baris per halaman</span>
+      </div>
+      
+      <div className="flex items-center gap-4">
+        <span className="text-sm text-slate-400">
+          Halaman <strong className="text-white">{currentPage}</strong> dari <strong className="text-white">{totalPages}</strong>
+        </span>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1 || isLoading}
+            className="px-4 py-1.5 rounded-lg bg-slate-700 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-600 transition-colors text-sm font-semibold"
+          >
+            Sebelumnya
+          </button>
+          <button 
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages || isLoading}
+            className="px-4 py-1.5 rounded-lg bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-500 transition-colors text-sm font-semibold shadow-md shadow-blue-900/20"
+          >
+            Selanjutnya
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
   );
 }
