@@ -9,7 +9,7 @@ import {
   Tooltip, 
   Legend 
 } from 'recharts';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, TrendingUp } from 'lucide-react';
 
 export default function TabHarian({ chartData }) {
   return (
