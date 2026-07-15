@@ -250,16 +250,13 @@ return (
       </div>
       <div className="flex justify-between items-center bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
         <span className="text-sm font-semibold text-slate-400">Total: <strong className="text-white font-bold">{dataPetugas?.length || 0}</strong> petugas terpantau</span>
-        <button onClick={onExport} className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-emerald-950/20 transition-all">
-          <Download size={16} />
-          <span>Unduh Excel</span>
-        </button>
+        
         <button 
         // 🌟 CUKUP PANGGIL FUNGSINYA DAN LEMPAR DATANYA
             onClick={() => handleExportExcelBPS(dataPetugas)}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded font-bold transition-all text-xs"
         >
-            <Download size={14} /> Export BPS Format
+            <Download size={14} /> Export Excel
         </button>
       </div>
   
