@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download,ArrowDown, Users , BarChart2} from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid , Legend} from 'recharts';
+import { handleExportExcelBPS } from '../../utils/export-report';
+
 
 export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
   const [expandedRow, setExpandedRow] = useState(null);
@@ -251,6 +253,13 @@ return (
         <button onClick={onExport} className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-emerald-950/20 transition-all">
           <Download size={16} />
           <span>Unduh Excel</span>
+        </button>
+        <button 
+        // 🌟 CUKUP PANGGIL FUNGSINYA DAN LEMPAR DATANYA
+            onClick={() => handleExportExcelBPS(dataPetugas)}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded font-bold transition-all text-xs"
+        >
+            <Download size={14} /> Export BPS Format
         </button>
       </div>
   
