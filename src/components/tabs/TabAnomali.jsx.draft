@@ -2,12 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { AlertTriangle, Filter, UserX, MapPin, Target } from 'lucide-react';
 
 export default function TabAnomali({ dataPetugas }) {
-  // 🌟 STATE: Menambahkan opsi 'capaian_low_target' dan 'capaian_low_alokator'
-  const [acuanAnomali, setAcuanAnomali] = useState('capaian_low_target'); 
+  // 🌟 STATE: Ditambah opsi 'draft_low'
+  const [acuanAnomali, setAcuanAnomali] = useState('target'); // 'target', 'alokator', 'draft_high', 'draft_low'
   const [selectedKecamatan, setSelectedKecamatan] = useState('');
   const [selectedDesa, setSelectedDesa] = useState('');
 
-  // 🌟 KALKULATOR TARGET HARIAN DINAMIS (Jika masih dibutuhkan untuk acuan harian)
+  // 🌟 KALKULATOR TARGET HARIAN DINAMIS
   const getTargetHarian = () => {
     const startDate = new Date('2026-06-15T00:00:00');
     const today = new Date();
@@ -20,7 +20,7 @@ export default function TabAnomali({ dataPetugas }) {
   const targetHarian = getTargetHarian();
   const batasAnomaliHarian = targetHarian * 0.5; 
 
-  // MESIN GROUPING DATA PETUGAS
+  // MESIN GROUPING
   const groupedPetugas = useMemo(() => {
     if (!dataPetugas) return [];
     const map = {};
@@ -46,6 +46,7 @@ export default function TabAnomali({ dataPetugas }) {
     });
 
     return Object.values(map).map(p => {
+      // Rumus progres riil
       const totalRiil = p.status_approved + p.status_submitted + p.status_rejected;
       
       return {
@@ -70,40 +71,32 @@ export default function TabAnomali({ dataPetugas }) {
     return [...new Set(desas.filter(Boolean))].sort();
   }, [dataPetugas, selectedKecamatan]);
 
-  // 🌟 MESIN FILTER ANOMALI (DIPERBARUI DENGAN FILTER < 60%)
+  // 🌟 MESIN FILTER ANOMALI
   const dataAnomaliFiltered = useMemo(() => {
     let hasilSaringan = groupedPetugas; 
 
-    if (acuanAnomali === 'capaian_low_target') {
-      // Petugas dengan Progres Target di bawah 60%
-      hasilSaringan = hasilSaringan.filter(item => item.progres_target < 60);
-    } else if (acuanAnomali === 'capaian_low_alokator') {
-      // Petugas dengan Progres Alokator di bawah 60%
-      hasilSaringan = hasilSaringan.filter(item => item.progres_alokator < 60);
-    } else if (acuanAnomali === 'target_harian_low') {
-      // Acuan lama (di bawah target harian dinamis)
+    // 🌟 LOGIKA FILTER BARU (Termasuk draft < 10)
+    if (acuanAnomali === 'target') {
       hasilSaringan = hasilSaringan.filter(item => item.progres_target < batasAnomaliHarian);
+    } else if (acuanAnomali === 'alokator') {
+      hasilSaringan = hasilSaringan.filter(item => item.progres_alokator < batasAnomaliHarian);
     } else if (acuanAnomali === 'draft_high') {
+      // Tampilkan petugas yang punya draft DI ATAS 10
       hasilSaringan = hasilSaringan.filter(item => item.status_draft > 10);
     } else if (acuanAnomali === 'draft_low') {
+      // Tampilkan petugas yang punya draft DI BAWAH 10
       hasilSaringan = hasilSaringan.filter(item => item.status_draft < 10);
     }
 
     if (selectedKecamatan) hasilSaringan = hasilSaringan.filter(item => item.kecamatans.has(selectedKecamatan));
     if (selectedDesa) hasilSaringan = hasilSaringan.filter(item => item.desas.has(selectedDesa));
 
-    // Urutkan data (Prioritaskan capaian terendah di atas)
+    // Urutkan data
     return hasilSaringan.sort((a, b) => {
-      if (acuanAnomali === 'capaian_low_target' || acuanAnomali === 'target_harian_low') {
-        return a.progres_target - b.progres_target;
-      }
-      if (acuanAnomali === 'capaian_low_alokator') {
-        return a.progres_alokator - b.progres_alokator;
-      }
-      if (acuanAnomali === 'draft_high' || acuanAnomali === 'draft_low') {
-        return b.status_draft - a.status_draft;
-      }
-      return 0;
+      if (acuanAnomali === 'draft_high') return b.status_draft - a.status_draft; // Urutkan draft terbanyak ke atas
+      if (acuanAnomali === 'draft_low') return b.status_draft - a.status_draft; // Sama, urutkan draft terbanyak (mendekati 10) ke atas
+      if (acuanAnomali === 'target') return a.progres_target - b.progres_target;
+      return a.progres_alokator - b.progres_alokator;
     });
   }, [groupedPetugas, acuanAnomali, selectedKecamatan, selectedDesa, batasAnomaliHarian]);
 
@@ -117,13 +110,13 @@ export default function TabAnomali({ dataPetugas }) {
             <UserX size={20} className="text-rose-400" />
           </div>
           <div>
-            <h3 className="text-white font-bold">Radar Anomali Capaian</h3>
-            {acuanAnomali === 'capaian_low_target' ? (
-               <p className="text-[11px] text-slate-400">Petugas dengan <strong className="text-rose-400">Capaian Target &lt; 60%</strong></p>
-            ) : acuanAnomali === 'capaian_low_alokator' ? (
-               <p className="text-[11px] text-slate-400">Petugas dengan <strong className="text-purple-400">Capaian Alokator &lt; 60%</strong></p>
+            <h3 className="text-white font-bold">Radar Anomali</h3>
+            {acuanAnomali === 'draft_high' ? (
+               <p className="text-[11px] text-slate-400">Petugas dengan <strong className="text-amber-400">Draft &gt; 10 Dokumen</strong></p>
+            ) : acuanAnomali === 'draft_low' ? (
+               <p className="text-[11px] text-slate-400">Petugas dengan <strong className="text-teal-400">Draft &lt; 10 Dokumen</strong></p>
             ) : (
-               <p className="text-[11px] text-slate-400">Petugas terdeteksi anomali sesuai kriteria aktif.</p>
+               <p className="text-[11px] text-slate-400">Petugas dengan progres di bawah <strong className="text-rose-400">{batasAnomaliHarian.toFixed(1)}%</strong></p>
             )}
           </div>
         </div>
@@ -131,20 +124,19 @@ export default function TabAnomali({ dataPetugas }) {
         {/* Kanan: Filters */}
         <div className="flex flex-wrap gap-4 items-center">
           
-          {/* 🌟 DROPDOWN ACUAN ANOMALI DITAMBAHKAN OPSI < 60% */}
+          {/* 🌟 DROPDOWN ACUAN ANOMALI DIPERBARUI */}
           <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-lg border border-rose-900/50 shadow-inner">
              <Target size={14} className="text-rose-400" />
              <span className="text-[10px] uppercase font-bold text-slate-400">Acuan:</span>
              <select
-               value={acuanAnomali}
-               onChange={(e) => setAcuanAnomali(e.target.value)}
-               className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
+                value={acuanAnomali}
+                onChange={(e) => setAcuanAnomali(e.target.value)}
+                className="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer"
              >
-               <option value="capaian_low_target" className="bg-slate-900 text-rose-400">⚠️ Capaian Target &lt; 60%</option>
-               <option value="capaian_low_alokator" className="bg-slate-900 text-purple-400">⚠️ Capaian Alokator &lt; 60%</option>
-               <option value="target_harian_low" className="bg-slate-900 text-blue-400">Di Bawah Target Harian</option>
-               <option value="draft_high" className="bg-slate-900 text-amber-400">Draft &gt; 10 Dokumen</option>
-               <option value="draft_low" className="bg-slate-900 text-teal-400">Draft &lt; 10 Dokumen</option>
+                <option value="target" className="bg-slate-900 text-blue-400">Di Bawah Target Utama</option>
+                <option value="alokator" className="bg-slate-900 text-purple-400">Di Bawah Alokator</option>
+                <option value="draft_high" className="bg-slate-900 text-amber-400">Draft &gt; 10 Dokumen</option>
+                <option value="draft_low" className="bg-slate-900 text-teal-400">Draft &lt; 10 Dokumen</option>
              </select>
           </div>
 
@@ -192,9 +184,9 @@ export default function TabAnomali({ dataPetugas }) {
       {/* BANNER HASIL */}
       <div className="bg-slate-800/50 border-l-4 border-rose-500 p-4 rounded-r-xl flex justify-between items-center">
         <div>
-          <h4 className="text-rose-400 font-bold text-sm">Hasil Scan Anomali Capaian:</h4>
+          <h4 className="text-rose-400 font-bold text-sm">Hasil Scan Lapangan:</h4>
           <p className="text-slate-300 text-xs mt-1">
-            Ditemukan <span className="font-bold text-white text-base font-mono">{dataAnomaliFiltered.length}</span> petugas yang masuk dalam radar pengawasan khusus (&lt; 60%).
+            Ditemukan <span className="font-bold text-white text-base font-mono">{dataAnomaliFiltered.length}</span> petugas berdasarkan kriteria radar ini.
           </p>
         </div>
       </div>
@@ -223,7 +215,7 @@ export default function TabAnomali({ dataPetugas }) {
                     <div className="bg-slate-800/50 p-4 rounded-full mb-3">
                       <AlertTriangle size={32} className="text-emerald-500/50" />
                     </div>
-                    <span className="font-semibold text-emerald-400">Aman, Komandan! Tidak ada petugas di bawah 60%.</span>
+                    <span className="font-semibold text-emerald-400">Data Kosong, Komandan!</span>
                   </div>
                 </td>
               </tr>
@@ -242,7 +234,12 @@ export default function TabAnomali({ dataPetugas }) {
                   <td className="p-4 text-center font-black font-mono text-purple-400">{item.alokator?.toLocaleString('id-ID')}</td>
                   <td className="p-4 text-center font-bold font-mono text-emerald-400">{item.status_approved?.toLocaleString('id-ID')}</td>
                   <td className="p-4 text-center font-semibold font-mono text-amber-400">{item.status_submitted?.toLocaleString('id-ID')}</td>
-                  <td className="p-4 text-center font-mono text-slate-300">{item.status_draft?.toLocaleString('id-ID')}</td>
+                  
+                  {/* 🌟 Kolom Draft akan menyala bila filter Draft dipilih */}
+                  <td className={`p-4 text-center font-mono font-bold ${(acuanAnomali === 'draft_high' || acuanAnomali === 'draft_low') ? 'text-amber-500 bg-amber-950/30' : 'text-slate-300'}`}>
+                    {item.status_draft?.toLocaleString('id-ID')}
+                  </td>
+
                   <td className="p-4 text-center font-mono text-rose-400">{item.status_rejected?.toLocaleString('id-ID')}</td>
                   
                   <td className="p-4">
@@ -250,16 +247,16 @@ export default function TabAnomali({ dataPetugas }) {
                       {/* Baris Target */}
                       <div className="flex items-center gap-2" title={`Vs Target: ${item.progres_target}%`}>
                         <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700">
-                          <div className={`absolute top-0 left-0 h-full rounded-full ${item.progres_target < 60 ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(item.progres_target, 100)}%` }}></div>
+                          <div className={`absolute top-0 left-0 h-full rounded-full ${acuanAnomali === 'target' && item.progres_target < batasAnomaliHarian ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(item.progres_target, 100)}%` }}></div>
                         </div>
-                        <span className={`text-[10px] font-bold w-7 text-right ${item.progres_target < 60 ? 'text-rose-400 font-extrabold animate-pulse' : 'text-blue-400'}`}>{item.progres_target}%</span>
+                        <span className={`text-[10px] font-bold w-7 text-right ${acuanAnomali === 'target' && item.progres_target < batasAnomaliHarian ? 'text-rose-400' : 'text-blue-400'}`}>{item.progres_target}%</span>
                       </div>
                       {/* Baris Alokator */}
                       <div className="flex items-center gap-2" title={`Vs Alokator: ${item.progres_alokator}%`}>
                         <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700">
-                          <div className={`absolute top-0 left-0 h-full rounded-full ${item.progres_alokator < 60 ? 'bg-rose-500' : 'bg-purple-500'}`} style={{ width: `${Math.min(item.progres_alokator, 100)}%` }}></div>
+                          <div className={`absolute top-0 left-0 h-full rounded-full ${acuanAnomali === 'alokator' && item.progres_alokator < batasAnomaliHarian ? 'bg-rose-500' : 'bg-purple-500'}`} style={{ width: `${Math.min(item.progres_alokator, 100)}%` }}></div>
                         </div>
-                        <span className={`text-[10px] font-bold w-7 text-right ${item.progres_alokator < 60 ? 'text-rose-400 font-extrabold animate-pulse' : 'text-purple-400'}`}>{item.progres_alokator}%</span>
+                        <span className={`text-[10px] font-bold w-7 text-right ${acuanAnomali === 'alokator' && item.progres_alokator < batasAnomaliHarian ? 'text-rose-400' : 'text-purple-400'}`}>{item.progres_alokator}%</span>
                       </div>
                     </div>
                   </td>
