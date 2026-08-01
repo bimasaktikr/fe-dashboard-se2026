@@ -19,7 +19,6 @@ export default function UserDashboard() {
   const [selectedKelurahan, setSelectedKelurahan] = useState('');
   const apiUrl = import.meta.env.VITE_API_BASE_URL;
 
-  // 🌟 KALKULATOR TARGET HARIAN DINAMIS
   const getTargetHarian = () => {
     const startDate = new Date('2026-06-15T00:00:00'); 
     const today = new Date(); 
@@ -42,9 +41,6 @@ export default function UserDashboard() {
     window.open(downloadUrl, "_blank");
   };
   
-  // ==========================================
-  // 1. DATA FETCHING FROM GERBANG API
-  // ==========================================
   useEffect(() => {
     Promise.all([
       axios.get(`${apiUrl}/api/v1/dashboard/summary`),
@@ -59,9 +55,6 @@ export default function UserDashboard() {
     .catch(err => console.error("Gagal koordinasi data dengan server:", err));
   }, [apiUrl]);
 
-  // ==========================================
-  // RENTANG WAKTU SYNC
-  // ==========================================
   const syncRange = useMemo(() => {
     if (!dataPetugas || dataPetugas.length === 0) return { awal: '-', akhir: '-', single: true };
     const latestSyncTimesPerAssignment = dataPetugas
@@ -100,9 +93,6 @@ export default function UserDashboard() {
     return { awal: awalFormatted, akhir: akhirFormatted, single: false };
   }, [dataPetugas]);
 
-  // ==========================================
-  // 2. LOGIKA GENERATE LIST EXTRACT FILTER
-  // ==========================================
   const listKecamatan = useMemo(() => {
     const unik = new Set(dataDesa.map(item => item.kecamatan));
     return Array.from(unik).sort();
@@ -120,9 +110,6 @@ export default function UserDashboard() {
     setSelectedKelurahan('');
   };
 
-  // ==========================================
-  // 3. REACTIVE FILTERING ENGINE (MENGARUH KE SEMUA TAB)
-  // ==========================================
   const filteredDataDesa = useMemo(() => {
     return dataDesa.filter(item => {
       const matchKec = selectedKecamatan ? item.kecamatan === selectedKecamatan : true;
@@ -157,7 +144,7 @@ export default function UserDashboard() {
       aggregated[item.email].status_approved += item.status_approved;
       aggregated[item.email].status_rejected += item.status_rejected;
       
-      const riilSelesaiLokal = item.status_approved + item.status_submitted + item.status_rejected;
+      const riilSelesaiLokal = Math.max(0, (item.target || 0) - (item.status_open || 0) - (item.status_draft || 0));
       
       aggregated[item.email].detail_assignment.push({
         assignment_code: item.assignment_code,
@@ -171,7 +158,6 @@ export default function UserDashboard() {
         status_approved: item.status_approved,
         status_rejected: item.status_rejected,
         last_synced_at: item.last_synced_at,
-        // 🌟 TIGA PROGRES CALCULATED FOR CHILD COMPS
         progres_prelist: item.target_prelist > 0 ? Number((riilSelesaiLokal / item.target_prelist * 100).toFixed(2)) : 0, 
         progres_target: item.target > 0 ? Number((riilSelesaiLokal / item.target * 100).toFixed(2)) : 0, 
         progres_alokator: item.alokator > 0 ? Number((riilSelesaiLokal / item.alokator * 100).toFixed(2)) : 0 
@@ -179,10 +165,9 @@ export default function UserDashboard() {
     });
 
     return Object.values(aggregated).map(p => {
-      const totalRiilSelesai = p.status_approved + p.status_submitted + p.status_rejected;
+      const totalRiilSelesai = Math.max(0, (p.target || 0) - (p.status_open || 0) - (p.status_draft || 0));
       return {
         ...p,
-        // 🌟 TIGA PROGRES GLOBAL PER PETUGAS
         progres_prelist: p.target_prelist > 0 ? Number((totalRiilSelesai / p.target_prelist * 100).toFixed(2)) : 0,
         progres_target: p.target > 0 ? Number((totalRiilSelesai / p.target * 100).toFixed(2)) : 0,
         progres_alokator: p.alokator > 0 ? Number((totalRiilSelesai / p.alokator * 100).toFixed(2)) : 0
@@ -218,7 +203,6 @@ export default function UserDashboard() {
     return Object.values(groupByDate);
   }, [dataTimeline, selectedKecamatan, selectedKelurahan]);
 
-  // 🌟 EKSTRAKSI GLOBAL
   const globalStats = useMemo(() => {
     const target_prelist = filteredDataDesa.reduce((acc, curr) => acc + (curr.target_prelist || 0), 0);
     const target = filteredDataDesa.reduce((acc, curr) => acc + (curr.target || 0), 0);
@@ -235,7 +219,6 @@ export default function UserDashboard() {
   return (
     <div className="p-8 min-h-screen bg-slate-900 text-slate-100 font-sans">
       
-      {/* HEADER COMMAND CENTER */}
       <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white">COMMAND CENTER SE2026</h1>
@@ -259,7 +242,6 @@ export default function UserDashboard() {
           </div>
       </header> 
 
-      {/* PANEL CONTROL FILTER */}
       <div className="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl mb-8 flex flex-col md:flex-row items-center gap-5 shadow-xl">
         <div className="flex items-center space-x-3 text-blue-400 font-bold text-sm tracking-wide shrink-0">
           <Filter size={18} />
@@ -284,9 +266,6 @@ export default function UserDashboard() {
         )}
       </div>
 
-      {/* ======================================================== */}
-      {/* 🌟 STATISTIK UTAMA (TRIPLE PROGRESS)                     */}
-      {/* ======================================================== */}
       {(() => {
         const totalPrelist = globalStats.target_prelist || 1; 
         const totalTarget = globalStats.target || 1; 
@@ -296,7 +275,9 @@ export default function UserDashboard() {
         const submitted  = globalStats.submitted  || 0 ;
         const rejected = globalStats.rejected || 0 ;
         const draft = globalStats.draft || 0 ;
-        const totalPerolehan = (globalStats.approved || 0) + (globalStats.submitted || 0) + (globalStats.rejected || 0);
+        const open = globalStats.open || 0 ;
+        
+        const totalPerolehan = Math.max(0, totalTarget - open - draft);
 
         const progresPrelist = ((totalPerolehan / totalPrelist) * 100).toFixed(2);
         const progresTarget = ((totalPerolehan / totalTarget) * 100).toFixed(2);
@@ -305,10 +286,8 @@ export default function UserDashboard() {
         return (
           <div className="mb-8">
             
-            {/* 🌟 3 KARTU PROGRESS UTAMA */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
               
-              {/* KOLOM 1: TARGET PRELIST */}
               <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-lg">
                 <div className="flex justify-between items-end mb-2">
                   <span className="text-slate-400 text-xs font-bold uppercase">Progres Target Prelist</span>
@@ -320,10 +299,10 @@ export default function UserDashboard() {
                 <p className="text-right text-xs text-slate-400 mt-2 font-mono tracking-wider">{totalPerolehan.toLocaleString()} / {totalPrelist.toLocaleString()}</p>
               </div>
 
-              {/* KOLOM 2: TARGET USAHA */}
               <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-lg">
                 <div className="flex justify-between items-end mb-2">
-                  <span className="text-slate-400 text-xs font-bold uppercase">Progres Target Usaha</span>
+                  {/* 🌟 DIUBAH KE ASSIGNMENT */}
+                  <span className="text-slate-400 text-xs font-bold uppercase">Progres Target Assignment</span>
                   <span className="text-4xl font-black text-blue-400">{progresTarget}%</span>
                 </div>
                 <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden shadow-inner">
@@ -332,7 +311,6 @@ export default function UserDashboard() {
                 <p className="text-right text-xs text-slate-400 mt-2 font-mono tracking-wider">{totalPerolehan.toLocaleString()} / {totalTarget.toLocaleString()}</p>
               </div>
 
-              {/* KOLOM 3: ALOKATOR */}
               <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-lg">
                 <div className="flex justify-between items-end mb-2">
                   <span className="text-slate-400 text-xs font-bold uppercase">Progres Alokator</span>
@@ -345,7 +323,6 @@ export default function UserDashboard() {
               </div>
             </div>
 
-            {/* 🌟 4 KARTU STATUS (DENGAN 3 PROGRESS BAR MINI) */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
               {[
                 { label: 'Approved', val: approved, color: 'text-emerald-400', bg: 'bg-emerald-500' },
@@ -359,9 +336,7 @@ export default function UserDashboard() {
                     <span className={`text-3xl font-black leading-none ${item.color}`}>{item.val.toLocaleString()}</span>
                   </div>
                   
-                  {/* Container 3 Mini Progress Bar */}
                   <div className="space-y-3 mt-auto">
-                    {/* Prelist */}
                     <div className="flex items-center gap-3" title="Komparasi thd Target Prelist">
                       <span className="text-[9px] font-bold text-slate-500 w-12 uppercase">Prelist</span>
                       <div className="relative flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -370,16 +345,15 @@ export default function UserDashboard() {
                       <span className="text-[10px] font-bold text-teal-400 w-8 text-right">{totalPrelist > 0 ? ((item.val/totalPrelist)*100).toFixed(0) : 0}%</span>
                     </div>
 
-                    {/* Usaha */}
-                    <div className="flex items-center gap-3" title="Komparasi thd Target Usaha">
-                      <span className="text-[9px] font-bold text-slate-500 w-12 uppercase">Usaha</span>
+                    {/* 🌟 DIUBAH KE ASSIGNMENT */}
+                    <div className="flex items-center gap-3" title="Komparasi thd Target Assignment">
+                      <span className="text-[9px] font-bold text-slate-500 w-12 uppercase">Assign</span>
                       <div className="relative flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
                         <div className={`${item.bg} absolute top-0 left-0 h-full rounded-full opacity-80`} style={{ width: `${totalTarget > 0 ? Math.min((item.val/totalTarget)*100, 100) : 0}%` }}></div>
                       </div>
                       <span className="text-[10px] font-bold text-blue-400 w-8 text-right">{totalTarget > 0 ? ((item.val/totalTarget)*100).toFixed(0) : 0}%</span>
                     </div>
 
-                    {/* Alokator */}
                     <div className="flex items-center gap-3" title="Komparasi thd Target Alokator">
                       <span className="text-[9px] font-bold text-slate-500 w-12 uppercase">Alokator</span>
                       <div className="relative flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -388,7 +362,6 @@ export default function UserDashboard() {
                       <span className="text-[10px] font-bold text-purple-400 w-8 text-right">{totalAlokator > 0 ? ((item.val/totalAlokator)*100).toFixed(0) : 0}%</span>
                     </div>
                   </div>
-
                 </div>
               ))}
             </div>
@@ -397,7 +370,6 @@ export default function UserDashboard() {
       })()}
 
 
-      {/* NAVIGASI TAB KONTROL */}
       <div className="flex flex-wrap gap-2 mb-6 bg-slate-800 p-1.5 rounded-xl w-fit border border-slate-700">
         <button onClick={() => setActiveTab('desa')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'desa' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
           <Layers size={16} /> <span>TAB 1: PROGRES PER DESA</span>
@@ -416,7 +388,6 @@ export default function UserDashboard() {
         </button>
       </div>
 
-      {/* VIEWPORT CONTROLLER CONTAINER */}
       <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-2xl overflow-hidden">
         {activeTab === 'desa' && <TabDesa dataDesa={filteredDataDesa} onExport={() => handleExportExcel(1)} />}
         {activeTab === 'petugas' && <TabPetugas dataPetugas={filteredDataPetugas} dataTimeline={dataTimeline} onExport={() => handleExportExcel(2)} />}
