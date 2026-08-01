@@ -14,6 +14,7 @@ import AITraining from './pages/admin/AITraining';
 import TambahPetugas from './pages/admin/TambahPetugas';
 import TransferPetugas from './pages/admin/TransferPetugas';
 import UpdateAssignment from './pages/admin/UpdateAssignment';
+import UploadTargetPrelist from './pages/admin/UploadTargetPrelist';
 
 
 
@@ -35,6 +36,7 @@ function App() {
           <Route path="trigger-bot" element={<TriggerBot />} />
           <Route path="ai-training" element={<AITraining />} />
           <Route path="update-assignment" element={<UpdateAssignment />} /> {/* Tambah rute baru ini */}
+          <Route path="upload-target-prelist" element={<UploadTargetPrelist />} />
         </Route>
       </Routes>
     </BrowserRouter>
