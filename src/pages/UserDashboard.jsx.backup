@@ -143,14 +143,13 @@ export default function UserDashboard() {
       if (!aggregated[item.email]) {
         aggregated[item.email] = {
           nama: item.nama, email: item.email, role: item.role,
-          target_prelist: 0, target: 0, alokator: 0, 
+          target: 0, alokator: 0, // 🌟 BARU: ALOKATOR DITAMBAHKAN
           status_open: 0, status_draft: 0, status_submitted: 0, status_approved: 0, status_rejected: 0,
           detail_assignment: [] 
         };
       }
-      aggregated[item.email].target_prelist += (item.target_prelist || 0);
       aggregated[item.email].target += (item.target || 0);
-      aggregated[item.email].alokator += (item.alokator || 0); 
+      aggregated[item.email].alokator += (item.alokator || 0); // 🌟 BARU: AGREGASI ALOKATOR
       aggregated[item.email].status_open += item.status_open;
       aggregated[item.email].status_draft += item.status_draft;
       aggregated[item.email].status_submitted += item.status_submitted;
@@ -162,19 +161,16 @@ export default function UserDashboard() {
       aggregated[item.email].detail_assignment.push({
         assignment_code: item.assignment_code,
         desa: item.desa,
-        target_prelist: item.target_prelist || 0,
         target: item.target,
-        alokator: item.alokator || 0,
+        alokator: item.alokator || 0, // 🌟 BARU
         status_open: item.status_open,
         status_draft: item.status_draft,
         status_submitted: item.status_submitted,
         status_approved: item.status_approved,
         status_rejected: item.status_rejected,
         last_synced_at: item.last_synced_at,
-        // 🌟 TIGA PROGRES CALCULATED FOR CHILD COMPS
-        progres_prelist: item.target_prelist > 0 ? Number((riilSelesaiLokal / item.target_prelist * 100).toFixed(2)) : 0, 
-        progres_target: item.target > 0 ? Number((riilSelesaiLokal / item.target * 100).toFixed(2)) : 0, 
-        progres_alokator: item.alokator > 0 ? Number((riilSelesaiLokal / item.alokator * 100).toFixed(2)) : 0 
+        progres_target: item.target > 0 ? Number((riilSelesaiLokal / item.target * 100).toFixed(2)) : 0, // 🌟 BARU
+        progres_alokator: item.alokator > 0 ? Number((riilSelesaiLokal / item.alokator * 100).toFixed(2)) : 0 // 🌟 BARU
       });
     });
 
@@ -182,8 +178,6 @@ export default function UserDashboard() {
       const totalRiilSelesai = p.status_approved + p.status_submitted + p.status_rejected;
       return {
         ...p,
-        // 🌟 TIGA PROGRES GLOBAL PER PETUGAS
-        progres_prelist: p.target_prelist > 0 ? Number((totalRiilSelesai / p.target_prelist * 100).toFixed(2)) : 0,
         progres_target: p.target > 0 ? Number((totalRiilSelesai / p.target * 100).toFixed(2)) : 0,
         progres_alokator: p.alokator > 0 ? Number((totalRiilSelesai / p.alokator * 100).toFixed(2)) : 0
       };
@@ -202,12 +196,11 @@ export default function UserDashboard() {
       if (!groupByDate[item.tanggal]) {
         groupByDate[item.tanggal] = { 
           tanggal: item.tanggal, 
-          TargetPrelist: 0, Target: 0, Alokator: 0, Approved: 0, Submitted: 0, Draft: 0, Rejected: 0, Open: 0 
+          Target: 0, Alokator: 0, Approved: 0, Submitted: 0, Draft: 0, Rejected: 0, Open: 0 
         };
       }
-      groupByDate[item.tanggal].TargetPrelist += (item.target_prelist || 0);
       groupByDate[item.tanggal].Target += (item.target || 0);
-      groupByDate[item.tanggal].Alokator += (item.alokator || 0); 
+      groupByDate[item.tanggal].Alokator += (item.alokator || 0); // 🌟 BARU
       groupByDate[item.tanggal].Approved += item.status_approved;
       groupByDate[item.tanggal].Submitted += item.status_submitted;
       groupByDate[item.tanggal].Draft += item.status_draft;
@@ -218,17 +211,15 @@ export default function UserDashboard() {
     return Object.values(groupByDate);
   }, [dataTimeline, selectedKecamatan, selectedKelurahan]);
 
-  // 🌟 EKSTRAKSI GLOBAL
   const globalStats = useMemo(() => {
-    const target_prelist = filteredDataDesa.reduce((acc, curr) => acc + (curr.target_prelist || 0), 0);
     const target = filteredDataDesa.reduce((acc, curr) => acc + (curr.target || 0), 0);
-    const alokator = filteredDataDesa.reduce((acc, curr) => acc + (curr.alokator || 0), 0);
+    const alokator = filteredDataDesa.reduce((acc, curr) => acc + (curr.alokator || 0), 0); // 🌟 BARU
     const approved = filteredDataDesa.reduce((acc, curr) => acc + (curr.status_approved || 0), 0);
     const submitted = filteredDataDesa.reduce((acc, curr) => acc + (curr.status_submitted || 0), 0);
     const draft = filteredDataDesa.reduce((acc, curr) => acc + (curr.status_draft || 0), 0);
     const rejected = filteredDataDesa.reduce((acc, curr) => acc + (curr.status_rejected || 0), 0);
     const open = filteredDataDesa.reduce((acc, curr) => acc + (curr.status_open || 0), 0);
-    return { target_prelist, target, alokator, approved, submitted, draft, rejected, open };
+    return { target, alokator, approved, submitted, draft, rejected, open };
   }, [filteredDataDesa]);
 
 
@@ -285,110 +276,68 @@ export default function UserDashboard() {
       </div>
 
       {/* ======================================================== */}
-      {/* 🌟 STATISTIK UTAMA (TRIPLE PROGRESS)                     */}
+      {/* 🌟 DUAL PROGRESS BAR RAKSASA + KARTU KPI ABSOLUT        */}
       {/* ======================================================== */}
       {(() => {
-        const totalPrelist = globalStats.target_prelist || 1; 
         const totalTarget = globalStats.target || 1; 
         const totalAlokator = globalStats.alokator || 1; 
-        
         const approved = globalStats.approved || 0 ;
         const submitted  = globalStats.submitted  || 0 ;
         const rejected = globalStats.rejected || 0 ;
         const draft = globalStats.draft || 0 ;
         const totalPerolehan = (globalStats.approved || 0) + (globalStats.submitted || 0) + (globalStats.rejected || 0);
 
-        const progresPrelist = ((totalPerolehan / totalPrelist) * 100).toFixed(2);
         const progresTarget = ((totalPerolehan / totalTarget) * 100).toFixed(2);
         const progresAlokator = ((totalPerolehan / totalAlokator) * 100).toFixed(2);
 
         return (
           <div className="mb-8">
             
-            {/* 🌟 3 KARTU PROGRESS UTAMA */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-              
-              {/* KOLOM 1: TARGET PRELIST */}
-              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-lg">
+            {/* 🌟 DUAL PROGRESS BAR */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* KOLOM 1: TARGET UTAMA */}
+              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
                 <div className="flex justify-between items-end mb-2">
-                  <span className="text-slate-400 text-xs font-bold uppercase">Progres Target Prelist</span>
-                  <span className="text-4xl font-black text-teal-400">{progresPrelist}%</span>
-                </div>
-                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden shadow-inner">
-                  <div className="bg-teal-500 h-full transition-all duration-700" style={{ width: `${Math.min(progresPrelist, 100)}%` }}></div>
-                </div>
-                <p className="text-right text-xs text-slate-400 mt-2 font-mono tracking-wider">{totalPerolehan.toLocaleString()} / {totalPrelist.toLocaleString()}</p>
-              </div>
-
-              {/* KOLOM 2: TARGET USAHA */}
-              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-lg">
-                <div className="flex justify-between items-end mb-2">
-                  <span className="text-slate-400 text-xs font-bold uppercase">Progres Target Usaha</span>
+                  <span className="text-slate-400 text-xs font-bold uppercase">Progres Target Utama</span>
                   <span className="text-4xl font-black text-blue-400">{progresTarget}%</span>
                 </div>
-                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden shadow-inner">
-                  <div className="bg-blue-500 h-full transition-all duration-700" style={{ width: `${Math.min(progresTarget, 100)}%` }}></div>
+                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden">
+                  <div className="bg-blue-500 h-full" style={{ width: `${progresTarget}%` }}></div>
                 </div>
-                <p className="text-right text-xs text-slate-400 mt-2 font-mono tracking-wider">{totalPerolehan.toLocaleString()} / {totalTarget.toLocaleString()}</p>
+                <p className="text-right text-xs text-slate-400 mt-1 font-mono">{totalPerolehan.toLocaleString()} / {totalTarget.toLocaleString()}</p>
               </div>
 
-              {/* KOLOM 3: ALOKATOR */}
-              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 shadow-lg">
+              {/* KOLOM 2: ALOKATOR */}
+              <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
                 <div className="flex justify-between items-end mb-2">
                   <span className="text-slate-400 text-xs font-bold uppercase">Progres Alokator</span>
                   <span className="text-4xl font-black text-purple-400">{progresAlokator}%</span>
                 </div>
-                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden shadow-inner">
-                  <div className="bg-purple-500 h-full transition-all duration-700" style={{ width: `${Math.min(progresAlokator, 100)}%` }}></div>
+                <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden">
+                  <div className="bg-purple-500 h-full" style={{ width: `${progresAlokator}%` }}></div>
                 </div>
-                <p className="text-right text-xs text-slate-400 mt-2 font-mono tracking-wider">{totalPerolehan.toLocaleString()} / {totalAlokator.toLocaleString()}</p>
+                <p className="text-right text-xs text-slate-400 mt-1 font-mono">{totalPerolehan.toLocaleString()} / {totalAlokator.toLocaleString()}</p>
               </div>
             </div>
 
-            {/* 🌟 4 KARTU STATUS (DENGAN 3 PROGRESS BAR MINI) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            {/* 🌟 7 KARTU ABSOLUT BAWAHNYA (Fluid Flexbox) */}
+            <div className="grid grid-cols-4 gap-4 mb-8">
               {[
                 { label: 'Approved', val: approved, color: 'text-emerald-400', bg: 'bg-emerald-500' },
                 { label: 'Submitted', val: submitted, color: 'text-amber-400', bg: 'bg-amber-500' },
                 { label: 'Draft', val: draft, color: 'text-slate-300', bg: 'bg-slate-500' },
                 { label: 'Rejected', val: rejected, color: 'text-rose-400', bg: 'bg-rose-500' }
               ].map((item, i) => (
-                <div key={i} className="bg-slate-900/40 p-5 rounded-xl border border-slate-700/50 flex flex-col justify-between">
-                  <div className="flex justify-between items-start mb-4">
-                    <p className="text-xs uppercase font-extrabold text-slate-500 tracking-wider">{item.label}</p>
-                    <span className={`text-3xl font-black leading-none ${item.color}`}>{item.val.toLocaleString()}</span>
+                <div key={i} className="bg-slate-900/40 p-4 rounded-lg border border-slate-700/50">
+                  <p className="text-[10px] uppercase font-bold text-slate-500">{item.label}</p>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className={`text-3xl font-black ${item.color}`}>{item.val.toLocaleString()}</span>
+                    {/* Indikator Progres Kecil untuk perbandingan ke Target Utama */}
+                    <span className="text-[18px] text-slate-500">{(totalTarget > 0 ? ((item.val/totalTarget)*100).toFixed(2) : 0)}%</span>
                   </div>
-                  
-                  {/* Container 3 Mini Progress Bar */}
-                  <div className="space-y-3 mt-auto">
-                    {/* Prelist */}
-                    <div className="flex items-center gap-3" title="Komparasi thd Target Prelist">
-                      <span className="text-[9px] font-bold text-slate-500 w-12 uppercase">Prelist</span>
-                      <div className="relative flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div className={`${item.bg} absolute top-0 left-0 h-full rounded-full opacity-80`} style={{ width: `${totalPrelist > 0 ? Math.min((item.val/totalPrelist)*100, 100) : 0}%` }}></div>
-                      </div>
-                      <span className="text-[10px] font-bold text-teal-400 w-8 text-right">{totalPrelist > 0 ? ((item.val/totalPrelist)*100).toFixed(0) : 0}%</span>
-                    </div>
-
-                    {/* Usaha */}
-                    <div className="flex items-center gap-3" title="Komparasi thd Target Usaha">
-                      <span className="text-[9px] font-bold text-slate-500 w-12 uppercase">Usaha</span>
-                      <div className="relative flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div className={`${item.bg} absolute top-0 left-0 h-full rounded-full opacity-80`} style={{ width: `${totalTarget > 0 ? Math.min((item.val/totalTarget)*100, 100) : 0}%` }}></div>
-                      </div>
-                      <span className="text-[10px] font-bold text-blue-400 w-8 text-right">{totalTarget > 0 ? ((item.val/totalTarget)*100).toFixed(0) : 0}%</span>
-                    </div>
-
-                    {/* Alokator */}
-                    <div className="flex items-center gap-3" title="Komparasi thd Target Alokator">
-                      <span className="text-[9px] font-bold text-slate-500 w-12 uppercase">Alokator</span>
-                      <div className="relative flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div className={`${item.bg} absolute top-0 left-0 h-full rounded-full opacity-80`} style={{ width: `${totalAlokator > 0 ? Math.min((item.val/totalAlokator)*100, 100) : 0}%` }}></div>
-                      </div>
-                      <span className="text-[10px] font-bold text-purple-400 w-8 text-right">{totalAlokator > 0 ? ((item.val/totalAlokator)*100).toFixed(0) : 0}%</span>
-                    </div>
+                  <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
+                    <div className={`${item.bg} h-full`} style={{ width: `${totalTarget > 0 ? Math.min((item.val/totalTarget)*100, 100) : 0}%` }}></div>
                   </div>
-
                 </div>
               ))}
             </div>
@@ -398,7 +347,7 @@ export default function UserDashboard() {
 
 
       {/* NAVIGASI TAB KONTROL */}
-      <div className="flex flex-wrap gap-2 mb-6 bg-slate-800 p-1.5 rounded-xl w-fit border border-slate-700">
+      <div className="flex space-x-4 mb-6 bg-slate-800 p-1.5 rounded-xl w-fit border border-slate-700">
         <button onClick={() => setActiveTab('desa')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'desa' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}>
           <Layers size={16} /> <span>TAB 1: PROGRES PER DESA</span>
         </button>
