@@ -1,11 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download, ArrowDown, Users, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download, ArrowDown, Users, BarChart2, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import { handleExportExcelBPS, handleExportSLSFiltered } from '../../utils/export-report';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 
 export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
   const [expandedRow, setExpandedRow] = useState(null);
   const [activeSubTab, setActiveSubTab] = useState('pcl');
+  
+  // 🌟 STATE BARU UNTUK MENU DROPDOWN EXPORT
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   
   const [sortConfig, setSortConfig] = useState({ key: 'progres_target', direction: 'desc' });
   const [currentPage, setCurrentPage] = useState(1);
@@ -21,7 +24,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
   }, [activeSubTab, dataPetugas]);
 
   const getSisaHari = () => {
-    const deadline = new Date('2026-08-17T23:59:59');
+    const deadline = new Date('2026-08-20T23:59:59');
     const today = new Date();
     if (today >= deadline) return 1; 
     const diffTime = deadline.getTime() - today.getTime();
@@ -30,13 +33,14 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
   const sisaHari = getSisaHari();
 
   const getTargetHarian = () => {
-    const startDate = new Date('2026-06-15T00:00:00');
+    const startDate = new Date('2026-06-16T00:00:00');
+    const endDate = new Date('2026-08-20T23:59:59');
     const today = new Date();
     if (today < startDate) return 0;
+    if (today > endDate) return 100;
     const diffTime = today.getTime() - startDate.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 3600 * 24)) + 1;
-    if (diffDays > 60) return 100;
-    return (diffDays / 60) * 100;
+    return Math.min((diffDays / 66) * 100, 100);
   };
   const targetHarian = getTargetHarian();
 
@@ -213,7 +217,6 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
       <span className="text-[10px] font-black font-mono text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20 w-16 text-center shadow-sm" title="Target Prelist">
         {prelist.toLocaleString('id-ID')}
       </span>
-      {/* 🌟 DIUBAH KE ASSIGNMENT */}
       <span className="text-[10px] font-black font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 w-16 text-center shadow-sm" title="Target Assignment">
         {usaha.toLocaleString('id-ID')}
       </span>
@@ -266,19 +269,59 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
           </span>
         </div>
         
-        <button 
-          onClick={() => handleExportExcelBPS(dataPetugas)}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold transition-all text-xs shadow-lg shadow-emerald-600/20"
-        >
-          <Download size={14} /> Export Excel
-        </button>
+        {/* 🌟 PEROMBAKAN UI: DROPDOWN MENU EXPORT */}
+        <div className="relative">
+          <button 
+            onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-bold transition-all text-xs shadow-lg shadow-blue-600/20"
+          >
+            <Download size={14} /> 
+            <span>Menu Export</span>
+            <ChevronDown size={14} className={`transition-transform duration-300 ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
 
-        <button 
-          onClick={() => handleExportSLSFiltered(sortedDataPetugas, dataPetugas)}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold transition-all text-xs shadow-lg shadow-indigo-600/20"
-        >
-          <Download size={14} /> Export XLS Filtered
-        </button>
+          {isExportMenuOpen && (
+            <>
+              {/* Overlay transparan untuk menutup menu saat klik di luar */}
+              <div 
+                className="fixed inset-0 z-10" 
+                onClick={() => setIsExportMenuOpen(false)}
+              ></div>
+              
+              <div className="absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="p-1.5">
+                  <button 
+                    onClick={() => {
+                      handleExportExcelBPS(dataPetugas);
+                      setIsExportMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-200 hover:bg-emerald-600/20 hover:text-emerald-400 rounded-lg transition-colors flex items-center gap-3"
+                  >
+                    <div className="p-1.5 bg-emerald-500/20 rounded-md text-emerald-400">
+                      <FileSpreadsheet size={14} />
+                    </div>
+                    Format Bukti Bayar BPS
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      handleExportSLSFiltered(sortedDataPetugas, dataPetugas);
+                      setIsExportMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2.5 text-xs font-bold text-slate-200 hover:bg-indigo-600/20 hover:text-indigo-400 rounded-lg transition-colors flex items-center gap-3 mt-1"
+                  >
+                    <div className="p-1.5 bg-indigo-500/20 rounded-md text-indigo-400">
+                      <BarChart2 size={14} />
+                    </div>
+                    Format Rekap & Detail SLS
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+        {/* AKHIR PEROMBAKAN UI EXPORT */}
+
       </div>
   
       <div className="overflow-x-auto bg-slate-900/40 border-l border-r border-b border-slate-700/50 shadow-inner rounded-b-xl">
@@ -296,7 +339,6 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
                   <div className="flex items-center gap-1.5 text-[9px] bg-slate-950 px-1.5 py-0.5 rounded-md border border-slate-700/80 shadow-inner">
                     <button onClick={() => requestSort('target_prelist')} className="hover:text-teal-300 text-teal-400 flex items-center" title="Urutkan berdasar Prelist">P{getSortIcon('target_prelist')}</button>
                     <div className="w-px h-3 bg-slate-700"></div>
-                    {/* 🌟 DIUBAH KE Asg (Assignment) */}
                     <button onClick={() => requestSort('target')} className="hover:text-blue-300 text-blue-400 flex items-center" title="Urutkan berdasar Assignment">Asg{getSortIcon('target')}</button>
                     <div className="w-px h-3 bg-slate-700"></div>
                     <button onClick={() => requestSort('alokator')} className="hover:text-purple-300 text-purple-400 flex items-center" title="Urutkan berdasar Alokator">A{getSortIcon('alokator')}</button>
@@ -395,7 +437,6 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
                           </div>
                           <span className={`text-[9px] font-bold w-7 text-right ${pPrelist < 60 ? 'text-rose-400' : 'text-teal-400'}`}>{pPrelist}%</span>
                         </div>
-                        {/* 🌟 DIUBAH KE ASSIGNMENT */}
                         <div className="flex items-center gap-2" title={`Vs Target Assignment: ${pUsaha}% | Target Harian: ${targetHarian.toFixed(1)}%`}>
                           <span className="text-[8px] font-bold text-slate-500 w-10 uppercase tracking-tighter">Assign</span>
                           <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700">
@@ -488,7 +529,6 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
                                                 </div>
                                                 <span className={`text-[8px] font-bold w-6 text-right ${pAPrelist < 60 ? 'text-rose-400' : 'text-teal-400'}`}>{pAPrelist}%</span>
                                               </div>
-                                              {/* 🌟 DIUBAH KE ASSIGNMENT */}
                                               <div className="flex items-center gap-1.5">
                                                 <div className="relative flex-1 bg-slate-950 h-1 rounded-full overflow-hidden border border-slate-800">
                                                   <div className="absolute top-0 left-0 h-full rounded-full bg-blue-500" style={{ width: `${Math.min(pAUsaha, 100)}%` }}></div>
@@ -594,7 +634,6 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
                                                   </div>
                                                   <span className={`text-[8px] font-bold w-6 text-right ${pABPrelist < 60 ? 'text-rose-400' : 'text-teal-400'}`}>{pABPrelist}%</span>
                                                 </div>
-                                                {/* 🌟 DIUBAH KE ASSIGNMENT */}
                                                 <div className="flex items-center gap-1.5">
                                                   <div className="relative flex-1 bg-slate-950 h-1 rounded-full overflow-hidden border border-slate-800">
                                                     <div className="absolute top-0 left-0 h-full rounded-full bg-blue-500" style={{ width: `${Math.min(pABUsaha, 100)}%` }}></div>
