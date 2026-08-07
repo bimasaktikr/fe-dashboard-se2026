@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download, ArrowDown, Users, BarChart2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { handleExportExcelBPS } from '../../utils/export-report';
+import { handleExportExcelBPS, handleExportSLSFiltered } from '../../utils/export-report';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 
 export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
@@ -21,7 +21,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
   }, [activeSubTab, dataPetugas]);
 
   const getSisaHari = () => {
-    const deadline = new Date('2026-08-15T23:59:59');
+    const deadline = new Date('2026-08-17T23:59:59');
     const today = new Date();
     if (today >= deadline) return 1; 
     const diffTime = deadline.getTime() - today.getTime();
@@ -271,6 +271,13 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport }) {
           className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold transition-all text-xs shadow-lg shadow-emerald-600/20"
         >
           <Download size={14} /> Export Excel
+        </button>
+
+        <button 
+          onClick={() => handleExportSLSFiltered(sortedDataPetugas, dataPetugas)}
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold transition-all text-xs shadow-lg shadow-indigo-600/20"
+        >
+          <Download size={14} /> Export XLS Filtered
         </button>
       </div>
   
