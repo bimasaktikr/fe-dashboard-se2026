@@ -15,6 +15,7 @@ import TambahPetugas from './pages/admin/TambahPetugas';
 import TransferPetugas from './pages/admin/TransferPetugas';
 import UpdateAssignment from './pages/admin/UpdateAssignment';
 import UploadTargetPrelist from './pages/admin/UploadTargetPrelist';
+import UploadSQLLab from './pages/admin/UploadSQLLab';  
 
 
 
@@ -37,6 +38,8 @@ function App() {
           <Route path="ai-training" element={<AITraining />} />
           <Route path="update-assignment" element={<UpdateAssignment />} /> {/* Tambah rute baru ini */}
           <Route path="upload-target-prelist" element={<UploadTargetPrelist />} />
+          <Route path="upload-sqllab" element={<UploadSQLLab />} />
+
         </Route>
       </Routes>
     </BrowserRouter>

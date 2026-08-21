@@ -34,6 +34,8 @@ function Sidebar({ onLogout }) {
     
     // 🌟 Intelijen & Anomali
     { name: 'Usaha Tidak Ditemukan', path: '/admin/usaha-nr', icon: <AlertTriangle size={20} className="text-amber-400" /> },
+    
+    { name: 'SQL LAB', path: '/admin/upload-sqllab', icon: <AlertTriangle size={20} className="text-amber-400" /> },
 
     // AI & Automasi
     { name: 'Trigger Bot FASIH', path: '/admin/trigger-bot', icon: <Bot size={20} /> },
