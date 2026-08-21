@@ -11,7 +11,8 @@ import {
   Home,
   Target,
   FileSpreadsheet,
-  AlertTriangle
+  AlertTriangle,
+  Database // 🌟 Tambahan icon baru untuk SQL LAB
 } from 'lucide-react';
 import Login from '../pages/admin/Login';
 
@@ -30,12 +31,13 @@ function Sidebar({ onLogout }) {
     
     // 🌟 Target & Baseline
     { name: 'Update Target Prelist', path: '/admin/upload-target-prelist', icon: <Target size={20} /> },
-    { name: 'Upload Alokator', path: '/admin/upload-alokator', icon: <FileSpreadsheet size={20} /> }, // Opsi tambahan jika ada rute terpisah
+    { name: 'Upload Alokator', path: '/admin/upload-alokator', icon: <FileSpreadsheet size={20} /> }, 
     
     // 🌟 Intelijen & Anomali
     { name: 'Usaha Tidak Ditemukan', path: '/admin/usaha-nr', icon: <AlertTriangle size={20} className="text-amber-400" /> },
     
-    { name: 'SQL LAB', path: '/admin/upload-sqllab', icon: <AlertTriangle size={20} className="text-amber-400" /> },
+    // 🌟 SQL LAB (Icon diubah jadi Database)
+    { name: 'SQL LAB', path: '/admin/upload-sqllab', icon: <Database size={20} className="text-blue-400" /> },
 
     // AI & Automasi
     { name: 'Trigger Bot FASIH', path: '/admin/trigger-bot', icon: <Bot size={20} /> },
@@ -50,7 +52,6 @@ function Sidebar({ onLogout }) {
       
       <div className="flex-1 flex flex-col gap-2">
         {menus.map((menu) => {
-          // Exact match for /admin, startsWith for others
           const isActive = menu.path === '/admin' 
             ? location.pathname === '/admin' || location.pathname === '/admin/'
             : location.pathname.startsWith(menu.path);
@@ -61,7 +62,7 @@ function Sidebar({ onLogout }) {
               to={menu.path}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                 isActive 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' // Ubah warna aktif ke Indigo
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
                   : 'hover:bg-slate-800 hover:text-white'
               }`}
             >
@@ -93,10 +94,32 @@ function Sidebar({ onLogout }) {
 }
 
 export default function AdminLayout() {
-  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('admin_auth') === 'true');
 
+  const checkLoginStatus = () => {
+    const authItem = localStorage.getItem('admin_auth');
+    if (!authItem) return false;
+
+    try {
+      const authData = JSON.parse(authItem);
+      const now = new Date().getTime();
+
+      // Bandingkan waktu sekarang dengan waktu expiry
+      if (now > authData.expiry) {
+        localStorage.removeItem('admin_auth'); // Sesi habis, bersihkan
+        return false;
+      }
+      return true; // Sesi masih berlaku
+    } catch (err) {
+      // Jika format bukan JSON (misal sisa data lama), bersihkan
+      localStorage.removeItem('admin_auth');
+      return false;
+    }
+  };
+
+  const [isLoggedIn, setIsLoggedIn] = useState(checkLoginStatus());
+
+  // 🌟 AKTIFKAN KEMBALI: Hanya butuh merubah state, karena setItem JSON sudah dilakukan di Login.jsx
   const handleLogin = () => {
-    localStorage.setItem('admin_auth', 'true');
     setIsLoggedIn(true);
   };
 
@@ -105,6 +128,7 @@ export default function AdminLayout() {
     setIsLoggedIn(false);
   };
 
+  // 🌟 AKTIFKAN KEMBALI: Blokir akses masuk jika belum login
   if (!isLoggedIn) {
     return <Login onLogin={handleLogin} />;
   }

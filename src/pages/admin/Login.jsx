@@ -24,7 +24,19 @@ export default function Login({ onLogin }) {
         username: username,
         password: password
       });
-      localStorage.setItem('admin_auth', 'true');
+      
+      // 🌟 PENGATURAN WAKTU KEDALUWARSA
+      const WAKTU_MENIT = 60; // Sesi akan habis dalam 60 menit
+      const now = new Date();
+      const expiryTimestamp = now.getTime() + (WAKTU_MENIT * 60 * 1000);
+
+      // 🌟 SIMPAN SEBAGAI JSON
+      const authData = {
+        isLoggedIn: true,
+        expiry: expiryTimestamp
+      };
+      
+      localStorage.setItem('admin_auth', JSON.stringify(authData));
       onLogin(); // Berhasil login
     } catch (err) {
       setError(err.response?.data?.detail || "Koneksi ke server gagal. Pastikan backend aktif.");
