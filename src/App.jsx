@@ -16,6 +16,8 @@ import TransferPetugas from './pages/admin/TransferPetugas';
 import UpdateAssignment from './pages/admin/UpdateAssignment';
 import UploadTargetPrelist from './pages/admin/UploadTargetPrelist';
 import UploadSQLLab from './pages/admin/UploadSQLLab';  
+import UploadDetailAssignment from './pages/admin/UploadDetailAssignment';
+import PetaTematikPublic from './pages/PetaTematikPublic';
 
 
 
@@ -25,7 +27,7 @@ function App() {
       <Routes>
         {/* Route Utama - User Dashboard */}
         <Route path="/" element={<UserDashboard />} />
-
+        <Route path="/map" element={<PetaTematikPublic />} />
         {/* Route Admin - Dibungkus AdminLayout untuk Sidebar & Login */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="upload-wilayah" replace />} />
@@ -38,6 +40,7 @@ function App() {
           <Route path="ai-training" element={<AITraining />} />
           <Route path="update-assignment" element={<UpdateAssignment />} /> {/* Tambah rute baru ini */}
           <Route path="upload-target-prelist" element={<UploadTargetPrelist />} />
+          <Route path="upload-detail-assignment" element={<UploadDetailAssignment />} />
           <Route path="upload-sqllab" element={<UploadSQLLab />} />
 
         </Route>

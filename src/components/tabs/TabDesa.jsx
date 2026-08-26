@@ -82,9 +82,9 @@ export default function TabDesa({ dataDesa, onExport }) {
               <th className="p-4 w-12 text-center">No</th>
               <th className="p-4 w-[200px]">Kecamatan / Desa</th>
               <th className="p-4 text-center text-teal-400" title="Target Prelist">Prelist</th>
-              {/* 🌟 DIUBAH KE ASSIGNMENT */}
               <th className="p-4 text-center text-blue-400" title="Target Assignment">Assign</th>
               <th className="p-4 text-center text-purple-400" title="Target Alokator">Alokator</th>
+              <th className="p-4 text-center text-blue-400">Open</th>
               <th className="p-4 text-center text-emerald-400">Appv</th>
               <th className="p-4 text-center text-amber-400">Subm</th>
               <th className="p-4 text-center text-slate-300">Draft</th>
@@ -127,6 +127,7 @@ export default function TabDesa({ dataDesa, onExport }) {
                   <td className="p-4 text-center font-black font-mono text-blue-400">{tUsaha.toLocaleString('id-ID')}</td>
                   <td className="p-4 text-center font-black font-mono text-purple-400">{tAlokator.toLocaleString('id-ID')}</td>
                   
+                  <td className="p-4 text-center font-bold font-mono text-blue-400">{open.toLocaleString('id-ID')}</td>
                   <td className="p-4 text-center font-bold font-mono text-emerald-400">{approved.toLocaleString('id-ID')}</td>
                   <td className="p-4 text-center font-semibold font-mono text-amber-400">{submitted.toLocaleString('id-ID')}</td>
                   <td className="p-4 text-center font-mono text-slate-300">{draft.toLocaleString('id-ID')}</td>
@@ -144,7 +145,6 @@ export default function TabDesa({ dataDesa, onExport }) {
                         </span>
                       </div>
 
-                      {/* 🌟 DIUBAH KE ASSIGNMENT */}
                       <div className="flex items-center gap-2" title={`Vs Target Assignment: ${pUsaha.toFixed(2)}%`}>
                         <span className="text-[8px] font-bold text-slate-500 w-10 uppercase tracking-tighter">Assign</span>
                         <div className="relative flex-1 bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-700">

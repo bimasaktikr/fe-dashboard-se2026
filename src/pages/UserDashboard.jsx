@@ -323,8 +323,10 @@ export default function UserDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
               {[
+                // 🌟 TAMBAHKAN STATUS OPEN DI SINI
+                { label: 'Open', val: open, color: 'text-blue-400', bg: 'bg-blue-500' },
                 { label: 'Approved', val: approved, color: 'text-emerald-400', bg: 'bg-emerald-500' },
                 { label: 'Submitted', val: submitted, color: 'text-amber-400', bg: 'bg-amber-500' },
                 { label: 'Draft', val: draft, color: 'text-slate-300', bg: 'bg-slate-500' },
