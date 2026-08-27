@@ -18,6 +18,7 @@ import UploadTargetPrelist from './pages/admin/UploadTargetPrelist';
 import UploadSQLLab from './pages/admin/UploadSQLLab';  
 import UploadDetailAssignment from './pages/admin/UploadDetailAssignment';
 import PetaTematikPublic from './pages/PetaTematikPublic';
+import AnomaliSpasial from './pages/admin/AnomaliSpasial';
 
 
 
@@ -42,6 +43,7 @@ function App() {
           <Route path="upload-target-prelist" element={<UploadTargetPrelist />} />
           <Route path="upload-detail-assignment" element={<UploadDetailAssignment />} />
           <Route path="upload-sqllab" element={<UploadSQLLab />} />
+          <Route path="anomali-spasial" element={<AnomaliSpasial />} />
 
         </Route>
       </Routes>

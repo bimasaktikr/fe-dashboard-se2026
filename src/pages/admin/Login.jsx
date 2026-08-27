@@ -20,7 +20,7 @@ export default function Login({ onLogin }) {
 
     try {
       const API_URL = import.meta.env.VITE_API_BASE_URL || '';
-      const res = await axios.post(`${API_URL}/api/v1/admin/login`, {
+      const res = await axios.post(`${API_URL}/api/v1/admin/login`, { // Pastikan endpoint-nya /api/v1/login sesuai FastAPI Anda
         username: username,
         password: password
       });
@@ -37,6 +37,12 @@ export default function Login({ onLogin }) {
       };
       
       localStorage.setItem('admin_auth', JSON.stringify(authData));
+      
+      // 🌟 TAMBAHAN BARU: Simpan status role & username ke localStorage
+      // Menggunakan res.data karena axios meletakkan respons API di dalam objek .data
+      localStorage.setItem('is_superadmin', res.data.user.is_superadmin);
+      localStorage.setItem('username', res.data.user.username);
+
       onLogin(); // Berhasil login
     } catch (err) {
       setError(err.response?.data?.detail || "Koneksi ke server gagal. Pastikan backend aktif.");

@@ -8,6 +8,7 @@ import TabPetugas from '../components/tabs/TabPetugas';
 import TabHarian from '../components/tabs/TabHarian';
 import TabAnomali from '../components/tabs/TabAnomali';
 import TabChatSQL from '../components/tabs/TabChatSQL';
+import NavbarPublic from '../components/NavbarPublic'; // Sesuaikan jalur path folder komponen Anda
 
 export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState('desa');
@@ -217,8 +218,10 @@ export default function UserDashboard() {
 
 
   return (
+    
     <div className="p-8 min-h-screen bg-slate-900 text-slate-100 font-sans">
-      
+      <NavbarPublic />
+
       <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white">COMMAND CENTER SE2026</h1>
@@ -241,7 +244,6 @@ export default function UserDashboard() {
             )}
           </div>
       </header> 
-
       <div className="bg-slate-800/80 border border-slate-700 p-5 rounded-2xl mb-8 flex flex-col md:flex-row items-center gap-5 shadow-xl">
         <div className="flex items-center space-x-3 text-blue-400 font-bold text-sm tracking-wide shrink-0">
           <Filter size={18} />
