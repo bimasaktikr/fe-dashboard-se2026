@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
 import DashboardCard from '../components/DashboardCard';
-import { Users, Filter, Layers, TrendingUp, CheckCircle2, ArrowUpRight, FileText, AlertTriangle, Calendar, Database, Target, MessageSquare } from 'lucide-react';
+import { Activity, Users, Filter, Layers, TrendingUp, CheckCircle2, ArrowUpRight, FileText, AlertTriangle, Calendar, Database, Target, MessageSquare } from 'lucide-react';
 
 import TabDesa from '../components/tabs/TabDesa';
 import TabPetugas from '../components/tabs/TabPetugas';
@@ -9,6 +9,10 @@ import TabHarian from '../components/tabs/TabHarian';
 import TabAnomali from '../components/tabs/TabAnomali';
 import TabChatSQL from '../components/tabs/TabChatSQL';
 import NavbarPublic from '../components/NavbarPublic'; // Sesuaikan jalur path folder komponen Anda
+// import ProgresHarian from '../components/tabs/TabProgresHarian';
+import TabProgresHarian from '../components/tabs/TabProgresHarian';
+// TabProgresHarian
+
 
 export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState('desa');
@@ -387,19 +391,37 @@ export default function UserDashboard() {
         <button onClick={() => setActiveTab('anomali')} className={`px-4 py-2 font-semibold text-sm rounded-t-lg transition-all flex items-center gap-2 ${activeTab === 'anomali' ? 'bg-slate-800/80 text-rose-400 border-t-2 border-rose-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'}`}>
           <AlertTriangle size={16} /> TAB 4: PEROLEHAN ANOMALI
         </button>
-        <button onClick={() => setActiveTab('chat')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'chat' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-slate-400 hover:text-white'}`}>
+        {/* <button onClick={() => setActiveTab('chat')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'chat' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-slate-400 hover:text-white'}`}>
           <MessageSquare size={16} /> <span>TAB 5: TANYA DATA AI</span>
+        </button> */}
+        <button 
+          onClick={() => setActiveTab('progres')} 
+          className={`px-4 py-2 font-semibold text-sm rounded-t-lg transition-all flex items-center gap-2 ${activeTab === 'progres' ? 'bg-slate-800/80 text-blue-400 border-t-2 border-blue-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'}`}
+        >
+          <Activity size={16} /> Tab 5. PROGRES HARIAN
         </button>
       </div>
 
       <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-2xl overflow-hidden">
         {activeTab === 'desa' && <TabDesa dataDesa={filteredDataDesa} onExport={() => handleExportExcel(1)} />}
-        {activeTab === 'petugas' && <TabPetugas dataPetugas={filteredDataPetugas} dataTimeline={dataTimeline} onExport={() => handleExportExcel(2)} />}
+        {/* {activeTab === 'petugas' && <TabPetugas dataPetugas={filteredDataPetugas} dataTimeline={dataTimeline} onExport={() => handleExportExcel(2)} />} */}
+        {activeTab === 'petugas' && (
+          <TabPetugas 
+            dataPetugas={filteredDataPetugas} 
+            dataTimeline={dataTimeline} 
+            onExport={() => handleExportExcel(2)} 
+            selectedKecamatan={selectedKecamatan} 
+            selectedKelurahan={selectedKelurahan} 
+          />
+        )}
         {activeTab === 'harian' && <TabHarian chartData={chartDataHarian} />}
         {activeTab === 'anomali' && <TabAnomali dataPetugas={dataPetugas} />}
-        <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
+        {/* 🌟 PERBAIKAN: Memanggil TabProgresHarian yang benar */}
+        {activeTab === 'progres' && <TabProgresHarian />}
+        
+        {/* <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
           <TabChatSQL />
-        </div>
+        </div> */}
       </div>
     </div>
   );

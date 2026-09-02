@@ -30,6 +30,7 @@ function Sidebar({ onLogout, isSuperadmin }) {
         { name: 'Upload Petugas', path: '/admin/upload-petugas', icon: <Users size={18} /> },
         { name: 'Tambah Petugas', path: '/admin/tambah-petugas', icon: <Users size={18} /> },
         { name: 'Transfer Petugas', path: '/admin/transfer-petugas', icon: <Users size={18} /> },
+        { name: 'Tambah User Admin', path: '/admin/tambah-user', icon: <Users size={18} /> },
       ]
     },
     {

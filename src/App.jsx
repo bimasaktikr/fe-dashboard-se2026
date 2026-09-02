@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet} from 'react-router-dom';
 
 // Import Pages
 import UserDashboard from './pages/UserDashboard';
@@ -19,8 +19,14 @@ import UploadSQLLab from './pages/admin/UploadSQLLab';
 import UploadDetailAssignment from './pages/admin/UploadDetailAssignment';
 import PetaTematikPublic from './pages/PetaTematikPublic';
 import AnomaliSpasial from './pages/admin/AnomaliSpasial';
+import TambahUser from './pages/admin/TambahUser';
 
-
+// 🌟 Komponen Penjaga: Hanya biarkan Superadmin masuk
+const SuperadminRoute = () => {
+  const isSuperadmin = localStorage.getItem('is_superadmin') === 'true';
+  // Jika bukan superadmin, lempar paksa ke halaman anomali spasial
+  return isSuperadmin ? <Outlet /> : <Navigate to="/admin/anomali-spasial" replace />;
+};
 
 function App() {
   return (
@@ -31,20 +37,22 @@ function App() {
         <Route path="/map" element={<PetaTematikPublic />} />
         {/* Route Admin - Dibungkus AdminLayout untuk Sidebar & Login */}
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="upload-wilayah" replace />} />
-          <Route path="upload-wilayah" element={<UploadWilayah />} />
-          <Route path="upload-petugas" element={<UploadPetugas />} />
-          <Route path="tambah-petugas" element={<TambahPetugas />} />
-          <Route path="transfer-petugas" element={<TransferPetugas />} />
-          <Route path="historis" element={<UploadHistoris />} />
-          <Route path="trigger-bot" element={<TriggerBot />} />
-          <Route path="ai-training" element={<AITraining />} />
-          <Route path="update-assignment" element={<UpdateAssignment />} /> {/* Tambah rute baru ini */}
-          <Route path="upload-target-prelist" element={<UploadTargetPrelist />} />
-          <Route path="upload-detail-assignment" element={<UploadDetailAssignment />} />
-          <Route path="upload-sqllab" element={<UploadSQLLab />} />
           <Route path="anomali-spasial" element={<AnomaliSpasial />} />
-
+          <Route element={<SuperadminRoute />}>
+            <Route index element={<Navigate to="upload-wilayah" replace />} />
+            <Route path="upload-wilayah" element={<UploadWilayah />} />
+            <Route path="upload-petugas" element={<UploadPetugas />} />
+            <Route path="tambah-petugas" element={<TambahPetugas />} />
+            <Route path="transfer-petugas" element={<TransferPetugas />} />
+            <Route path="historis" element={<UploadHistoris />} />
+            <Route path="trigger-bot" element={<TriggerBot />} />
+            <Route path="ai-training" element={<AITraining />} />
+            <Route path="update-assignment" element={<UpdateAssignment />} /> {/* Tambah rute baru ini */}
+            <Route path="upload-target-prelist" element={<UploadTargetPrelist />} />
+            <Route path="upload-detail-assignment" element={<UploadDetailAssignment />} />
+            <Route path="upload-sqllab" element={<UploadSQLLab />} />
+            <Route path="tambah-user" element={<TambahUser />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>
