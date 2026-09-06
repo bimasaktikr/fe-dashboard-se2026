@@ -24,10 +24,16 @@ export default function UploadProgress() {
 
     setIsUploading(true);
     try {
-      const response = await fetch(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1/admin/upload-progress-pendataan', {
-        method: 'POST',
-        body: formData,
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-se2026.bpskotamalang.id';
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/upload-progress-pendataan`, {
+          method: 'POST',
+          body: formData,
       });
+      // const response = await fetch(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1/admin/upload-progress-pendataan', {
+      //   method: 'POST',
+      //   body: formData,
+      // });
       
       if (!response.ok) {
         const errorData = await response.json();
