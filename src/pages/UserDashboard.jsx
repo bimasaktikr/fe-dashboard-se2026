@@ -395,17 +395,6 @@ export default function UserDashboard() {
         {/* <button onClick={() => setActiveTab('chat')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'chat' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-slate-400 hover:text-white'}`}>
           <MessageSquare size={16} /> <span>TAB 5: TANYA DATA AI</span>
         </button> */}
-        <button
-          onClick={() => setActiveTab('progress-pendataan')} // Asumsi state tab Bosku menggunakan angka
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all ${
-            activeTab === 'progress-pendataan' 
-              ? 'bg-emerald-600 text-white shadow-md' 
-              : 'text-slate-500 hover:bg-slate-100'
-          }`}
-        >
-          {/* Gunakan icon dari lucide-react jika perlu */}
-          <span className="text-sm">5. Kewajaran Usaha & Progress</span>
-        </button>
       </div>
 
       <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 shadow-2xl overflow-hidden">
@@ -424,7 +413,7 @@ export default function UserDashboard() {
         {activeTab === 'anomali' && <TabAnomali dataPetugas={dataPetugas} />}
         {/* 🌟 PERBAIKAN: Memanggil TabProgresHarian yang benar */}
         {activeTab === 'progres' && <TabProgresHarian />}
-        {activeTab === 'progress-pendataan' && <TabProgressPendataan />}
+        {/* {activeTab === 'progress-pendataan' && <TabProgressPendataan />} */}
         
         {/* <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
           <TabChatSQL />
