@@ -24,7 +24,7 @@ export default function UploadProgress() {
 
     setIsUploading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/admin/upload-progress-pendataan', {
+      const response = await fetch(import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1/admin/upload-progress-pendataan', {
         method: 'POST',
         body: formData,
       });
