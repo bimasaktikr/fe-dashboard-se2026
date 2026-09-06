@@ -20,8 +20,12 @@ export default function TabProgressPendataan({ dataPetugas = [] }) {
     setIsLoading(true);
     setExpandedRow(null);
     setCurrentPage(1);
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api-se2026.bpskotamalang.id';
+
     try {
-      const response = await fetch(import.meta.env.VITE_API_BASE_URL || `http://localhost:8000/api/v1/dashboard/get-progress-pendataan`);
+      
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/upload-progress-pendataan` || `http://localhost:8000/api/v1/dashboard/get-progress-pendataan`);
+
       if (!response.ok) throw new Error("Gagal menarik data");
       const result = await response.json();
       setDataProgress(Array.isArray(result) ? result : []);
