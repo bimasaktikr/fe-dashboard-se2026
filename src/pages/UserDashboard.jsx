@@ -11,6 +11,7 @@ import TabChatSQL from '../components/tabs/TabChatSQL';
 import NavbarPublic from '../components/NavbarPublic'; // Sesuaikan jalur path folder komponen Anda
 // import ProgresHarian from '../components/tabs/TabProgresHarian';
 import TabProgresHarian from '../components/tabs/TabProgresHarian';
+import TabProgressPendataan from '../components/tabs/TabProgressPendataan';
 // TabProgresHarian
 
 
@@ -394,11 +395,16 @@ export default function UserDashboard() {
         {/* <button onClick={() => setActiveTab('chat')} className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'chat' ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'text-slate-400 hover:text-white'}`}>
           <MessageSquare size={16} /> <span>TAB 5: TANYA DATA AI</span>
         </button> */}
-        <button 
-          onClick={() => setActiveTab('progres')} 
-          className={`px-4 py-2 font-semibold text-sm rounded-t-lg transition-all flex items-center gap-2 ${activeTab === 'progres' ? 'bg-slate-800/80 text-blue-400 border-t-2 border-blue-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'}`}
+        <button
+          onClick={() => setActiveTab('progress-pendataan')} // Asumsi state tab Bosku menggunakan angka
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all ${
+            activeTab === 'progress-pendataan' 
+              ? 'bg-emerald-600 text-white shadow-md' 
+              : 'text-slate-500 hover:bg-slate-100'
+          }`}
         >
-          <Activity size={16} /> Tab 5. PROGRES HARIAN
+          {/* Gunakan icon dari lucide-react jika perlu */}
+          <span className="text-sm">5. Kewajaran Usaha & Progress</span>
         </button>
       </div>
 
@@ -418,6 +424,7 @@ export default function UserDashboard() {
         {activeTab === 'anomali' && <TabAnomali dataPetugas={dataPetugas} />}
         {/* 🌟 PERBAIKAN: Memanggil TabProgresHarian yang benar */}
         {activeTab === 'progres' && <TabProgresHarian />}
+        {activeTab === 'progress-pendataan' && <TabProgressPendataan />}
         
         {/* <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
           <TabChatSQL />

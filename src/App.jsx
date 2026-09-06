@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet} from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
 // Import Pages
 import UserDashboard from './pages/UserDashboard';
@@ -20,6 +20,7 @@ import UploadDetailAssignment from './pages/admin/UploadDetailAssignment';
 import PetaTematikPublic from './pages/PetaTematikPublic';
 import AnomaliSpasial from './pages/admin/AnomaliSpasial';
 import TambahUser from './pages/admin/TambahUser';
+import UploadProgress from './pages/admin/UploadProgress'; // Sesuaikan path import
 
 // 🌟 Komponen Penjaga: Hanya biarkan Superadmin masuk
 const SuperadminRoute = () => {
@@ -52,6 +53,7 @@ function App() {
             <Route path="upload-detail-assignment" element={<UploadDetailAssignment />} />
             <Route path="upload-sqllab" element={<UploadSQLLab />} />
             <Route path="tambah-user" element={<TambahUser />} />
+            <Route path="upload-progress" element={<UploadProgress />} />
           </Route>
         </Route>
       </Routes>

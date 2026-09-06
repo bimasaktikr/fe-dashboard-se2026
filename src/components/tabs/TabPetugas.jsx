@@ -1,14 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download, ArrowDown, Users, BarChart2, ChevronLeft, ChevronRight, FileSpreadsheet, Layers } from 'lucide-react';
+import { ChevronDown, ChevronUp, Map, TrendingUp, Clock, ArrowUpDown, ArrowUp, Download, ArrowDown, Users, BarChart2, ChevronLeft, ChevronRight, FileSpreadsheet, Layers, CheckCircle } from 'lucide-react';
 import { handleExportExcelBPS, handleExportSLSFiltered } from '../../utils/export-report';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
-import TabProgresHarian from './TabProgresHarian'; // 🌟 IMPORT TABEL HARIAN
 
-// 🌟 TERIMA PROPS FILTER KECAMATAN & KELURAHAN
+// 🌟 IMPORT KEDUA SUB-KOMPONEN
+import TabProgresHarian from './TabProgresHarian'; 
+import TabProgressPendataan from './TabProgressPendataan'; // <--- Komponen Read-Only yang tadi kita buat
+
 export default function TabPetugas({ dataPetugas, dataTimeline, onExport, selectedKecamatan, selectedKelurahan }) {
-  // 🌟 STATE MASTER TOGGLE (Normal vs Harian)
+  // 🌟 MASTER TOGGLE: 'akumulasi' | 'harian' | 'kewajaran'
   const [viewMode, setViewMode] = useState('akumulasi'); 
-  
+
   const [expandedRow, setExpandedRow] = useState(null);
   const [activeSubTab, setActiveSubTab] = useState('pcl');
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -58,7 +60,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport, select
       const target_prelist = item.target_prelist || 0;
       const target = item.target || 0;
       const alokator = item.alokator || 0;
-      
+
       return { 
         ...item, 
         progres_prelist: target_prelist > 0 ? Math.round((total / target_prelist) * 100) : 0,
@@ -98,7 +100,6 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport, select
     return sortConfig.direction === 'asc' ? <ArrowUp size={10} className="text-white inline-block ml-0.5" /> : <ArrowDown size={10} className="text-white inline-block ml-0.5" />;
   };
 
-  // ... [BIARKAN FUNGSI CHART & RUMUS ANAK BUAH PML TETAP SAMA] ...
   const formatLengkapWaktu = (timestampRaw) => {
     if (!timestampRaw || timestampRaw === "-") return "-";
     try {
@@ -188,34 +189,46 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport, select
 
   return (
     <div className="overflow-x-auto animate-in fade-in duration-500">
-      
-      {/* 🌟 MASTER TOGGLE VIEW MODE */}
+
+      {/* ========================================================= */}
+      {/* 🌟 MASTER TOGGLE VIEW MODE (SEKARANG ADA 3 OPSI)          */}
+      {/* ========================================================= */}
       <div className="flex justify-center sm:justify-start mb-6 border-b border-slate-700/50 pb-4">
-        <div className="bg-slate-900 p-1.5 rounded-xl border border-slate-700/80 flex space-x-1 shadow-lg shadow-black/20">
+        <div className="bg-slate-900 p-1.5 rounded-xl border border-slate-700/80 flex flex-wrap gap-1 shadow-lg shadow-black/20">
           <button
             onClick={() => setViewMode('akumulasi')}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
               viewMode === 'akumulasi' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
             }`}
           >
-            <Layers size={16} /> Mode Akumulasi Kinerja
+            <Layers size={16} /> Akumulasi Kinerja
           </button>
           <button
             onClick={() => setViewMode('harian')}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
               viewMode === 'harian' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
             }`}
           >
-            <TrendingUp size={16} /> Mode Progres Harian (H-1 vs H)
+            <TrendingUp size={16} /> Progres Harian (H-1)
+          </button>
+          
+          {/* 🌟 OPSI KETIGA DITAMBAHKAN DI SINI */}
+          <button
+            onClick={() => setViewMode('kewajaran')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
+              viewMode === 'kewajaran' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <CheckCircle size={16} /> Progress Kewajaran (Responden)
           </button>
         </div>
       </div>
 
-      {viewMode === 'akumulasi' ? (
+      {/* ========================================================= */}
+      {/* 🌟 RENDER KONTEN BERDASARKAN TOGGLE                     */}
+      {/* ========================================================= */}
+      {viewMode === 'akumulasi' && (
         <>
-          {/* ========================================================= */}
-          {/* UI TABEL NORMAL (AKUMULASI PCL & PML)                       */}
-          {/* ========================================================= */}
           <div className="flex space-x-2 mb-4">
             <button onClick={() => setActiveSubTab('pcl')} className={`px-6 py-2.5 text-sm font-bold rounded-t-lg transition-all ${activeSubTab === 'pcl' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>Kinerja PCL Lapangan</button>
             <button onClick={() => setActiveSubTab('pml')} className={`px-6 py-2.5 text-sm font-bold rounded-t-lg transition-all ${activeSubTab === 'pml' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>Pengawasan PML</button>
@@ -235,7 +248,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport, select
               </div>
               <span className="text-sm font-semibold text-slate-400 border-l border-slate-700 pl-4">Total: <strong className="text-white font-bold">{totalItems}</strong> petugas terpantau</span>
             </div>
-            
+
             <div className="relative">
               <button onClick={() => setIsExportMenuOpen(!isExportMenuOpen)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg font-bold transition-all text-xs shadow-lg shadow-blue-600/20">
                 <Download size={14} /> <span>Menu Export</span> <ChevronDown size={14} className={`transition-transform duration-300 ${isExportMenuOpen ? 'rotate-180' : ''}`} />
@@ -257,7 +270,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport, select
               )}
             </div>
           </div>
-      
+
           <div className="overflow-x-auto bg-slate-900/40 border-l border-r border-b border-slate-700/50 shadow-inner rounded-b-xl">
             <table className="w-full text-left border-collapse min-w-[1100px]">
               <thead>
@@ -306,7 +319,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport, select
                 {currentData.map((item, idx) => {
                   const actualIndex = startIndex + idx + 1;
                   const isExpanded = expandedRow === item.email;
-                  
+
                   const tPrelist = item.target_prelist || 0;
                   const tUsaha = item.target || 0;
                   const tAlokator = item.alokator || 0;
@@ -337,21 +350,21 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport, select
                             </span>
                           </div>
                         </td>
-                        
+
                         <td className="p-4"><StackedTargets prelist={tPrelist} usaha={tUsaha} alokator={tAlokator} /></td>
                         <td className="p-4 text-center font-mono font-bold text-blue-400 bg-blue-500/10">{open.toLocaleString('id-ID')}</td>
                         <td className="p-4 text-center font-mono text-emerald-400 font-bold">{approved.toLocaleString('id-ID')}</td>
                         <td className="p-4 text-center font-mono text-amber-400">{submitted.toLocaleString('id-ID')}</td>
                         <td className="p-4 text-center font-mono text-slate-300">{draft.toLocaleString('id-ID')}</td>
                         <td className="p-4 text-center font-mono text-rose-400">{rejected.toLocaleString('id-ID')}</td>
-                        
+
                         <td className="p-4 text-center">
                           <div className="flex flex-col justify-center items-center h-full pt-1.5">
                             <span className="text-lg font-black font-mono text-amber-400 leading-none">{item.harusDikerjakanPerHari}</span>
                             <span className="block text-[8px] text-slate-500 mt-1 uppercase tracking-wider">dok/hari</span>
                           </div>
                         </td>
-                        
+
                         <td className="p-4">
                           <div className="space-y-2 w-full">
                             <div className="flex items-center gap-2" title={`Vs Target Prelist: ${pPrelist}%`}>
@@ -414,7 +427,7 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport, select
                                           const pAPrelist = aPrelist > 0 ? Math.round((aSelesai / aPrelist) * 100) : 0;
                                           const pAUsaha = aUsaha > 0 ? Math.round((aSelesai / aUsaha) * 100) : 0;
                                           const pAAlokator = aAlokator > 0 ? Math.round((aSelesai / aAlokator) * 100) : 0;
-                                          
+
                                           return(
                                             <tr key={i} className="hover:bg-slate-800/30">
                                               <td className="p-3 align-top pt-4">
@@ -591,16 +604,29 @@ export default function TabPetugas({ dataPetugas, dataTimeline, onExport, select
             </div>
           </div>
         </>
-      ) : (
-        /* ========================================================= */
-        /* UI TABEL HARIAN (H-1 vs H) DIPANGGIL DI SINI              */
-        /* ========================================================= */
+      )}
+
+      {/* ========================================================= */}
+      {/* 🌟 RENDER TAB PROGRES HARIAN                              */}
+      {/* ========================================================= */}
+      {viewMode === 'harian' && (
         <TabProgresHarian 
-          dataPetugas={dataPetugas}     // 🌟 Lempar data hari ini (Sudah terfilter global)
-          dataTimeline={dataTimeline}   // 🌟 Lempar data historis (Untuk dicari H-1 nya)
+          dataPetugas={dataPetugas}     
+          dataTimeline={dataTimeline}   
           selectedKecamatan={selectedKecamatan} 
           selectedKelurahan={selectedKelurahan} 
         />
+      )}
+
+      {/* ========================================================= */}
+      {/* 🌟 RENDER TAB PROGRESS KEWAJARAN (YANG BARU!)             */}
+      {/* ========================================================= */}
+      {viewMode === 'kewajaran' && (
+        <TabProgressPendataan 
+            dataPetugas={dataPetugas}
+            // selectedKecamatan={selectedKecamatan} 
+            // selectedKelurahan={selectedKelurahan} 
+          />      
       )}
     </div>
   );

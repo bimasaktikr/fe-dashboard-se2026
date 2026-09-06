@@ -17,7 +17,7 @@ export default function UploadTargetPrelist() {
   const handleUpload = async () => {
     if (!file) return;
     setStatus('loading');
-    setMessage('');
+    setMessage(''); 
 
     const formData = new FormData();
     formData.append('file', file);

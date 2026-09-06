@@ -22,6 +22,7 @@ function Sidebar({ onLogout, isSuperadmin }) {
   const location = useLocation();
   
   // 🌟 STRUKTUR BARU: MENU DIKELOMPOKKAN BERDASARKAN KATEGORI
+  // 🌟 STRUKTUR BARU: MENU DIKELOMPOKKAN BERDASARKAN KATEGORI
   const menuGroups = [
     {
       title: "DATA MASTER & SDM",
@@ -40,6 +41,8 @@ function Sidebar({ onLogout, isSuperadmin }) {
         { name: 'Update Assignment', path: '/admin/update-assignment', icon: <History size={18} /> },
         { name: 'Update Target Prelist', path: '/admin/upload-target-prelist', icon: <Target size={18} /> },
         { name: 'Upload Alokator', path: '/admin/upload-alokator', icon: <FileSpreadsheet size={18} /> }, 
+        // 🌟 MENU BARU KITA MASUK DI SINI BOSKU!
+        { name: 'Upload Progress', path: '/admin/upload-progress', icon: <FileSpreadsheet size={18} className="text-emerald-400" /> }, 
       ]
     },
     {
@@ -123,10 +126,11 @@ function Sidebar({ onLogout, isSuperadmin }) {
       <div className="pt-4 mt-8 border-t border-slate-800/80 flex flex-col gap-2 shrink-0">
         <div className="px-4 pb-2">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sesi Pengguna</p>
-          <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
-             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-             {isSuperadmin ? "Super Administrator" : "Operator Lapangan"}
-          </p>
+         {/* 🌟 SESUDAH (Aman!) */}
+          <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            {isSuperadmin ? "Super Administrator" : "Operator Lapangan"}
+          </div>
         </div>
         <Link 
           to="/"
