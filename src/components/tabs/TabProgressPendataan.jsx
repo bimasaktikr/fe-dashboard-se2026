@@ -24,7 +24,7 @@ export default function TabProgressPendataan({ dataPetugas = [] }) {
 
     try {
       
-      const response = await fetch(`${API_BASE_URL}/api/v1/admin/upload-progress-pendataan` || `http://localhost:8000/api/v1/dashboard/get-progress-pendataan`);
+      const response = await fetch(`${API_BASE_URL}/api/v1/dashboard/get-progress-pendataan`);
 
       if (!response.ok) throw new Error("Gagal menarik data");
       const result = await response.json();
