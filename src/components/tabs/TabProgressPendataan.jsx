@@ -21,7 +21,7 @@ export default function TabProgressPendataan({ dataPetugas = [] }) {
     setExpandedRow(null);
     setCurrentPage(1);
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/dashboard/get-progress-pendataan`);
+      const response = await fetch(import.meta.env.VITE_API_BASE_URL || `http://localhost:8000/api/v1/dashboard/get-progress-pendataan`);
       if (!response.ok) throw new Error("Gagal menarik data");
       const result = await response.json();
       setDataProgress(Array.isArray(result) ? result : []);
