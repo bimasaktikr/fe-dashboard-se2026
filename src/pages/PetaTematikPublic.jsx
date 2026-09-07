@@ -13,6 +13,19 @@ const getProp = (obj, key) => {
   return actualKey ? obj[actualKey] : null;
 };
 
+// 🌟 HELPER SENSOR NAMA: BIMA SAKTI -> B*** S****
+const sensorNama = (nama) => {
+  if (!nama || nama.trim() === '' || nama.toUpperCase() === 'N/A') return 'N/A';
+  
+  return nama.split(' ').map(kata => {
+    // Kalau cuma 1 karakter/huruf, biarkan saja
+    if (kata.length <= 1) return kata; 
+    
+    // Ambil huruf pertama, sisanya diganti bintang sebanyak jumlah huruf tersisa
+    return kata.charAt(0) + '*'.repeat(kata.length - 1);
+  }).join(' ');
+};
+
 // 🌟 KOMPONEN RENDER CEPAT TITIK
 function FastTitikLayer({ data }) {
   const map = useMap();
@@ -36,10 +49,13 @@ function FastTitikLayer({ data }) {
         color: '#ffffff', weight: 1.5, fillOpacity: 0.9
       });
 
+      // 🌟 EKSEKUSI SENSOR NAMA SEBELUM DITAMPILKAN KE POPUP
+      const namaAman = sensorNama(titik.nama_usaha);
+
       marker.bindPopup(`
         <div style="min-width: 200px; font-family: sans-serif;">
           <div style="font-size: 10px; font-weight: bold; color: #64748b; margin-bottom: 4px;">BANGUNAN ${titik.nomor_bangunan || '-'}</div>
-          <div style="font-size: 14px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">${titik.nama_usaha || 'N/A'}</div>
+          <div style="font-size: 14px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">${namaAman}</div>
           <div style="font-size: 10px; font-weight: bold; color: #10b981;">STATUS: ${titik.status_alias}</div>
         </div>
       `);
