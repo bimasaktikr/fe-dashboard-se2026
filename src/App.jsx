@@ -21,6 +21,7 @@ import PetaTematikPublic from './pages/PetaTematikPublic';
 import AnomaliSpasial from './pages/admin/AnomaliSpasial';
 import TambahUser from './pages/admin/TambahUser';
 import UploadProgress from './pages/admin/UploadProgress'; // Sesuaikan path import
+import UploadLabelSls from './pages/admin/UploadLabelSLS';
 
 // 🌟 Komponen Penjaga: Hanya biarkan Superadmin masuk
 const SuperadminRoute = () => {
@@ -54,6 +55,7 @@ function App() {
             <Route path="upload-sqllab" element={<UploadSQLLab />} />
             <Route path="tambah-user" element={<TambahUser />} />
             <Route path="upload-progress" element={<UploadProgress />} />
+            <Route path="upload-label-sls" element={<UploadLabelSls />} />
           </Route>
         </Route>
       </Routes>

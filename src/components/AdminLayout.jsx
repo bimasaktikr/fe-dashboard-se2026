@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   Database,
   Map,
-  ShieldAlert
+  ShieldAlert,
+  Tag
 } from 'lucide-react';
 import Login from '../pages/admin/Login';
 
@@ -28,6 +29,7 @@ function Sidebar({ onLogout, isSuperadmin }) {
       title: "DATA MASTER & SDM",
       items: [
         { name: 'Upload Wilayah', path: '/admin/upload-wilayah', icon: <MapPin size={18} /> },
+        { name: 'Upload Label SLS', path: '/admin/upload-label-sls', icon: <Tag size={18} /> },
         { name: 'Upload Petugas', path: '/admin/upload-petugas', icon: <Users size={18} /> },
         { name: 'Tambah Petugas', path: '/admin/tambah-petugas', icon: <Users size={18} /> },
         { name: 'Transfer Petugas', path: '/admin/transfer-petugas', icon: <Users size={18} /> },

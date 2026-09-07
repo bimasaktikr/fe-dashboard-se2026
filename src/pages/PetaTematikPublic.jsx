@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, useMap, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, AlertTriangle, ShieldCheck, FilterX, Layers } from 'lucide-react';
+import { Map as MapIcon, Loader2, AlertTriangle, ShieldCheck, FilterX, Layers, Database } from 'lucide-react';
+import axios from 'axios';
 
-// 🌟 HELPER: Pembaca Properti Kebal Peluru (Tahan huruf besar/kecil)
+// 🌟 HELPER: Pembaca Properti Kebal Peluru
 const getProp = (obj, key) => {
   if (!obj) return null;
   const actualKey = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase());
@@ -32,7 +33,7 @@ function FastTitikLayer({ data }) {
 
       const marker = L.circleMarker([lat, lng], {
         renderer: canvasRenderer, radius: 5, fillColor: color,
-        color: '#1e293b', weight: 1, fillOpacity: 1
+        color: '#ffffff', weight: 1.5, fillOpacity: 0.9
       });
 
       marker.bindPopup(`
@@ -56,110 +57,154 @@ function FastTitikLayer({ data }) {
 export default function PetaTematikPublic() {
   const [dataTitik, setDataTitik] = useState([]);
   const [batasWilayah, setBatasWilayah] = useState(null); 
+  const [isLoading, setIsLoading] = useState(false);
   
-  const [selectedKecamatan, setSelectedKecamatan] = useState("");
-  const [selectedKelurahan, setSelectedKelurahan] = useState("");
-  const [selectedSLS, setSelectedSLS] = useState(null);   
-  
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // 🌟 MASTER DROPDOWN DARI API (DIKEMBALIKAN KE JALAN YANG BENAR)
+  const [listKecamatan, setListKecamatan] = useState([]);
+  const [listKelurahan, setListKelurahan] = useState([]);
+  const [listSlsApi, setListSlsApi] = useState([]);
 
+  // 🌟 STATE PILIHAN
+  const [selectedKdkec, setSelectedKdkec] = useState("");
+  const [selectedIddesa, setSelectedIddesa] = useState("");
+  const [selectedNmdesa, setSelectedNmdesa] = useState(""); // Disimpan untuk mencocokkan dengan GeoJSON
+  const [selectedSls, setSelectedSls] = useState("");   
+
+  // =========================================================================
+  // 1. INITIAL LOAD
+  // =========================================================================
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
       try {
         const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
         
-        // Fetch Titik
-        const resTitik = await fetch(`${API_URL}/api/v1/maps/get-titik-tematik`);
-        if (!resTitik.ok) throw new Error('Gagal mengambil data titik');
-        const titik = await resTitik.json();
-        
-        if (Array.isArray(titik)) {
-          const validTitik = titik.filter(item => item.latitude && item.longitude && !isNaN(parseFloat(item.latitude)));
-          setDataTitik(validTitik);
-        }
+        // Tarik Master Kecamatan API
+        const resKec = await axios.get(`${API_URL}/api/v1/maps/get-list-kecamatan`);
+        setListKecamatan(resKec.data || []);
 
-        // Fetch GeoJSON
-        try {
-          const resBatas = await fetch('/batas_sls.geojson'); 
-          if (resBatas.ok) {
-            const batas = await resBatas.json();
-            setBatasWilayah(batas);
-          }
-        } catch (errBatas) {
-          console.warn("File batas_sls.geojson bermasalah.");
+        // Tarik GeoJSON Poligon
+        const resBatas = await fetch('/batas_sls.geojson'); 
+        if (resBatas.ok) {
+          const batas = await resBatas.json();
+          setBatasWilayah(batas);
         }
       } catch (err) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
+        console.warn("Gagal memuat data awal:", err);
       }
     };
-    fetchData();
+    fetchInitialData();
   }, []);
 
-  // 🌟 EKSTRAKSI PROPERTI OTOMATIS (Mencegah Bug Dropdown Kosong)
-  const allFeatures = useMemo(() => {
-    if (!batasWilayah) return [];
-    // Deteksi apakah GeoJSON berupa Array langsung atau FeatureCollection
-    const features = Array.isArray(batasWilayah) ? batasWilayah : (batasWilayah.features || []);
-    return features.map(f => f.properties || {});
-  }, [batasWilayah]);
+  // =========================================================================
+  // 2. HANDLER DROPDOWN BERUNTUN (KEC -> KEL -> SLS)
+  // =========================================================================
+  const handleKecamatanChange = async (e) => {
+    const kdkec = e.target.value;
+    setSelectedKdkec(kdkec);
+    
+    setSelectedIddesa(''); 
+    setSelectedNmdesa('');
+    setSelectedSls('');
+    setListKelurahan([]);
+    setListSlsApi([]);
+    setDataTitik([]); 
 
-  // Ekstraksi List Dropdown
-  const listKecamatan = useMemo(() => {
-    return [...new Set(allFeatures.map(p => getProp(p, 'nmkec')))].filter(Boolean).sort();
-  }, [allFeatures]);
+    if (kdkec) {
+      try {
+        const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const resKel = await axios.get(`${API_URL}/api/v1/maps/get-list-kelurahan/${kdkec}`);
+        setListKelurahan(resKel.data || []);
+      } catch (error) {
+        console.error("Gagal memuat master kelurahan:", error);
+      }
+    }
+  };
 
-  const listKelurahan = useMemo(() => {
-    if (!selectedKecamatan) return [];
-    return [...new Set(allFeatures.filter(p => getProp(p, 'nmkec') === selectedKecamatan).map(p => getProp(p, 'nmdesa')))].filter(Boolean).sort();
-  }, [allFeatures, selectedKecamatan]);
+  const handleKelurahanChange = async (e) => {
+    const iddesa = e.target.value;
+    setSelectedIddesa(iddesa);
+    
+    // Simpan Nama Desa untuk highlight Poligon GeoJSON
+    const kelObj = listKelurahan.find(k => k.iddesa === iddesa);
+    setSelectedNmdesa(kelObj ? kelObj.nmdesa : "");
 
-  const listSLS = useMemo(() => {
-    if (!selectedKelurahan) return [];
-    return allFeatures.filter(p => getProp(p, 'nmdesa') === selectedKelurahan).map(p => getProp(p, 'idsubsls')).filter(Boolean).sort();
-  }, [allFeatures, selectedKelurahan]);
+    setSelectedSls('');
+    setListSlsApi([]);
+    setDataTitik([]);
 
-  // 🌟 LOGIKA PENYARINGAN TITIK (Lebih Aman)
-  const validSLSIds = useMemo(() => {
-    // Jika tidak ada filter yang aktif, kembalikan null (tampilkan semua)
-    if (!selectedKecamatan && !selectedKelurahan && !selectedSLS) return null;
+    if (iddesa) {
+      try {
+        const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+        const res = await axios.get(`${API_URL}/api/v1/maps/get-list-sls/${iddesa}`);
+        
+        const sortedData = (res.data || []).sort((a, b) => {
+          const namaA = a.nmsls || "";
+          const namaB = b.nmsls || "";
+          return namaA.localeCompare(namaB, 'id', { numeric: true });
+        });
+        setListSlsApi(sortedData);
+      } catch (err) {
+        console.error("Gagal memuat daftar SLS:", err);
+      }
+    }
+  };
 
-    let result = allFeatures;
-    if (selectedKecamatan) result = result.filter(p => String(getProp(p, 'nmkec')) === String(selectedKecamatan));
-    if (selectedKelurahan) result = result.filter(p => String(getProp(p, 'nmdesa')) === String(selectedKelurahan));
-    if (selectedSLS) result = result.filter(p => String(getProp(p, 'idsubsls')) === String(selectedSLS));
+  // =========================================================================
+  // 3. FUNGSI TARIK DATA (LAZY LOADING API)
+  // =========================================================================
+  const handleMuatData = async () => {
+    if (!selectedIddesa) return;
+    setIsLoading(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      
+      // 🌟 SEKARANG BENAR! MENGIRIMKAN KODE ID (Contoh: 3573050001) BUKAN NAMA KELURAHAN
+      const response = await axios.get(`${API_URL}/api/v1/maps/get-titik-tematik?iddesa=${selectedIddesa}`);
+      
+      const titik = response.data.data || response.data;
+      if (Array.isArray(titik)) {
+        const validTitik = titik.filter(item => item.latitude && item.longitude && !isNaN(parseFloat(item.latitude)));
+        setDataTitik(validTitik);
+      }
+    } catch (err) {
+      console.error("Gagal menarik data titik:", err);
+      setDataTitik([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    return result.map(p => String(getProp(p, 'idsubsls')));
-  }, [selectedKecamatan, selectedKelurahan, selectedSLS, allFeatures]);
-
+  // =========================================================================
+  // 4. LOGIKA FILTER TITIK LOKAL & HIGHLIGHT POLIGON
+  // =========================================================================
   const filteredTitik = useMemo(() => {
-    if (!validSLSIds) return dataTitik; // Tampilkan semua jika null
-    return dataTitik.filter(titik => validSLSIds.includes(String(titik.region_code).trim()));
-  }, [dataTitik, validSLSIds]);
+    if (!selectedSls) return dataTitik; 
+    return dataTitik.filter(titik => String(titik.region_code).trim().startsWith(String(selectedSls)));
+  }, [dataTitik, selectedSls]);
 
-  // Highlight Poligon
   const isFeatureHighlighted = (feature) => {
     const p = feature.properties;
     const fSLS = String(getProp(p, 'idsubsls'));
     const fKel = String(getProp(p, 'nmdesa'));
-    const fKec = String(getProp(p, 'nmkec'));
 
-    if (selectedSLS) return fSLS === String(selectedSLS);
-    if (selectedKelurahan) return fKel === String(selectedKelurahan);
-    if (selectedKecamatan) return fKec === String(selectedKecamatan);
+    if (selectedSls) return fSLS === String(selectedSls);
+    // Kita cek berdasarkan NAMA desa (karena GeoJSON isinya nmdesa, bukan iddesa)
+    if (selectedNmdesa) return fKel.toUpperCase() === String(selectedNmdesa).toUpperCase();
     return false;
   };
 
   const handleReset = () => {
-    setSelectedKecamatan("");
-    setSelectedKelurahan("");
-    setSelectedSLS(null);
+    setSelectedKdkec("");
+    setSelectedIddesa("");
+    setSelectedNmdesa("");
+    setSelectedSls("");
+    setDataTitik([]); 
+    setListKelurahan([]);
+    setListSlsApi([]);
   };
 
   return (
-    <div className="h-screen w-full flex flex-col bg-slate-950 text-slate-200 relative">
+    <div className="h-screen w-full flex flex-col bg-slate-950 text-slate-200 relative font-sans">
       <div className="absolute top-6 right-6 z-[1000]">
         <Link to="/admin" className="flex items-center gap-2 bg-slate-900/80 hover:bg-blue-600 backdrop-blur border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl shadow-lg transition-all text-sm font-bold">
           <ShieldCheck size={18} />
@@ -178,16 +223,12 @@ export default function PetaTematikPublic() {
         <div className="mb-3">
           <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase tracking-wider flex items-center gap-1.5"><Layers size={12}/> Kecamatan</label>
           <select 
-            value={selectedKecamatan}
-            onChange={(e) => {
-              setSelectedKecamatan(e.target.value);
-              setSelectedKelurahan(""); 
-              setSelectedSLS(null);     
-            }}
+            value={selectedKdkec}
+            onChange={handleKecamatanChange}
             className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl p-2.5 outline-none focus:border-blue-500 transition-all cursor-pointer"
           >
             <option value="">-- Semua Kecamatan --</option>
-            {listKecamatan.map((kec, idx) => <option key={idx} value={kec}>{kec}</option>)}
+            {listKecamatan.map((kec) => <option key={kec.kdkec} value={kec.kdkec}>{kec.nmkec}</option>)}
           </select>
         </div>
 
@@ -195,41 +236,55 @@ export default function PetaTematikPublic() {
         <div className="mb-3">
           <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase tracking-wider flex items-center gap-1.5"><Layers size={12}/> Kelurahan / Desa</label>
           <select 
-            value={selectedKelurahan}
-            onChange={(e) => {
-              setSelectedKelurahan(e.target.value);
-              setSelectedSLS(null); 
-            }}
-            disabled={!selectedKecamatan}
+            value={selectedIddesa}
+            onChange={handleKelurahanChange}
+            disabled={!selectedKdkec}
             className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl p-2.5 outline-none focus:border-emerald-500 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <option value="">-- Semua Kelurahan --</option>
-            {listKelurahan.map((kel, idx) => <option key={idx} value={kel}>{kel}</option>)}
+            <option value="">-- Pilih Kelurahan --</option>
+            {listKelurahan.map((kel) => <option key={kel.iddesa} value={kel.iddesa}>{kel.nmdesa}</option>)}
           </select>
         </div>
 
         {/* === FILTER 3: SLS === */}
         <div className="mb-4">
-          <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase tracking-wider flex items-center gap-1.5"><Layers size={12}/> SLS (idsubsls)</label>
+          <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase tracking-wider flex items-center gap-1.5"><Layers size={12}/> SLS (Satuan Lingkungan Setempat)</label>
           <select 
-            value={selectedSLS || ""}
-            onChange={(e) => setSelectedSLS(e.target.value || null)}
-            disabled={!selectedKelurahan}
+            value={selectedSls}
+            onChange={(e) => setSelectedSls(e.target.value)}
+            disabled={!selectedIddesa}
             className="w-full bg-slate-950 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl p-2.5 outline-none focus:border-rose-500 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="">-- Semua SLS --</option>
-            {listSLS.map((sls, idx) => <option key={idx} value={sls}>SLS: {sls}</option>)}
+            {listSlsApi.map((sls) => <option key={sls.region_code} value={sls.region_code}>{sls.nmsls || sls.region_code}</option>)}
           </select>
         </div>
 
+        {/* 🌟 TOMBOL LAZY LOAD DATA */}
+        <button 
+          onClick={handleMuatData}
+          disabled={!selectedIddesa || isLoading}
+          className={`w-full mb-4 flex justify-center items-center gap-2 p-3 rounded-xl text-sm font-bold transition-all ${
+            !selectedIddesa ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30'
+          }`}
+        >
+          {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} />}
+          {isLoading ? 'Menarik Koordinat...' : 'MUAT DATA SPASIAL'}
+        </button>
+
+        {!selectedIddesa && (
+          <p className="text-[10px] text-amber-500 flex items-center gap-1 font-bold mb-4 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+            <AlertTriangle size={12} /> Pilih Kelurahan untuk muat data
+          </p>
+        )}
+
         {/* TOMBOL RESET */}
-        {(selectedKecamatan || selectedKelurahan || selectedSLS) && (
+        {(selectedKdkec || selectedIddesa || dataTitik.length > 0) && (
           <button 
             onClick={handleReset}
             className="w-full mb-4 flex items-center justify-center gap-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 px-3 py-2.5 rounded-xl text-xs font-bold transition-all"
           >
-            <FilterX size={16} />
-            Reset Semua Filter
+            <FilterX size={16} /> Reset Semua Filter
           </button>
         )}
 
@@ -237,7 +292,7 @@ export default function PetaTematikPublic() {
           <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> APPROVED</div>
           <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div> OPEN</div>
           <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div> SUBMITTED</div>
-          <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-slate-400"></div> LAINNYA</div>
+          <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div> REJECTED</div>
         </div>
       </div>
 
@@ -257,20 +312,25 @@ export default function PetaTematikPublic() {
           zoomControl={false}
           style={{ height: '100%', width: '100%', backgroundColor: '#0f172a' }}
         >
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution='&copy; CARTO' />
+          {/* 🌟 GOOGLE MAPS HYBRID BASEMAP (SATELIT + JALAN/LABEL) */}
+          <TileLayer 
+            url="http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" 
+            attribution="&copy; Google Maps"
+            maxZoom={20}
+          />
 
           {/* RENDER POLIGON */}
           {batasWilayah && (
             <GeoJSON 
-              key={`${selectedKecamatan}-${selectedKelurahan}-${selectedSLS}`}
+              key={`${selectedKdkec}-${selectedIddesa}-${selectedSls}`}
               data={batasWilayah}
               style={(feature) => {
                 const highlighted = isFeatureHighlighted(feature);
                 return {
-                  color: highlighted ? '#3b82f6' : '#334155', 
-                  weight: highlighted ? 2 : 1,
+                  color: highlighted ? '#3b82f6' : '#94a3b8', 
+                  weight: highlighted ? 2.5 : 1,
                   fillColor: highlighted ? '#3b82f6' : 'transparent',
-                  fillOpacity: highlighted ? 0.15 : 0
+                  fillOpacity: highlighted ? 0.2 : 0
                 };
               }}
               onEachFeature={(feature, layer) => {
@@ -281,9 +341,8 @@ export default function PetaTematikPublic() {
                     const fKel = getProp(p, 'nmdesa');
                     const fSLS = getProp(p, 'idsubsls');
 
-                    if (fKec) setSelectedKecamatan(fKec);
-                    if (fKel) setSelectedKelurahan(fKel);
-                    setSelectedSLS(String(selectedSLS) === String(fSLS) ? null : fSLS);
+                    // Kita asumsikan API tidak dipanggil saat klik dari peta agar tidak membingungkan state dropdown API
+                    console.log(`Poligon di klik: Kec ${fKec}, Kel ${fKel}, SLS ${fSLS}`);
                   }
                 });
               }}
