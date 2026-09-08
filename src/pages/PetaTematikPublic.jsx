@@ -3,17 +3,21 @@ import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, useMap, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, AlertTriangle, ShieldCheck, FilterX, Layers, Database } from 'lucide-react';
+import { Map as MapIcon, Loader2, AlertTriangle, ShieldCheck, FilterX, Layers, Database, ChevronUp, ChevronDown } from 'lucide-react';
 import axios from 'axios';
 
-// 🌟 HELPER: Pembaca Properti Kebal Peluru
+// =========================================================================
+// 🌟 1. HELPER FUNCTIONS
+// =========================================================================
+
+// Pembaca Properti Kebal Peluru GeoJSON
 const getProp = (obj, key) => {
   if (!obj) return null;
   const actualKey = Object.keys(obj).find(k => k.toLowerCase() === key.toLowerCase());
   return actualKey ? obj[actualKey] : null;
 };
 
-// 🌟 HELPER SENSOR NAMA: BIMA SAKTI -> B*** S****
+// Sensor Nama: "BIMA SAKTI" -> "B*** S****"
 const sensorNama = (nama) => {
   if (!nama || nama.trim() === '' || nama.toUpperCase() === 'N/A') return 'N/A';
   return nama.split(' ').map(kata => {
@@ -22,29 +26,30 @@ const sensorNama = (nama) => {
   }).join(' ');
 };
 
-// 🌟 KOMPONEN RENDER CEPAT TITIK DENGAN LABEL NOMOR BANGUNAN
+// =========================================================================
+// 🌟 2. KOMPONEN: RENDER TITIK (LABEL NOMOR BANGUNAN)
+// =========================================================================
 function FastTitikLayer({ data }) {
   const map = useMap();
   
   useEffect(() => {
     if (!data || data.length === 0) return;
-    
-    // Kita membuat layer group baru untuk menampung marker custom
     const markerGroup = L.layerGroup().addTo(map);
 
     data.forEach(titik => {
       const lat = parseFloat(titik.latitude);
       const lng = parseFloat(titik.longitude);
       
-      let color = '#94a3b8'; // Default Abu-abu
+      let color = '#94a3b8';
       if (titik.status_alias === 'APPROVED') color = '#10b981';
       else if (titik.status_alias === 'OPEN') color = '#f59e0b';
       else if (titik.status_alias === 'SUBMITTED') color = '#3b82f6';
       else if (titik.status_alias === 'REJECTED') color = '#ef4444';
 
       const nomor = titik.nomor_bangunan || '-';
+      const namaAman = sensorNama(titik.nama_usaha);
 
-      // 🌟 DESAIN PIN MARKER DENGAN NOMOR BANGUNAN (Berupa Kapsul/Lingkaran)
+      // Desain Kapsul Nomor
       const iconHtml = `
         <div style="
           background-color: ${color};
@@ -66,22 +71,16 @@ function FastTitikLayer({ data }) {
         </div>
       `;
 
-      // Jadikan div HTML di atas sebagai Icon Marker
       const customIcon = L.divIcon({
         html: iconHtml,
-        className: '', // Dikosongkan agar tidak ada kotak putih bawaan Leaflet
-        iconSize: [0, 0], // Size diatur oleh CSS transform di atas
+        className: '',
+        iconSize: [0, 0], 
         iconAnchor: [0, 0], 
-        popupAnchor: [0, -12] // Posisi popup agak naik ke atas
+        popupAnchor: [0, -12] 
       });
 
-      // Pasang marker dengan custom icon
       const marker = L.marker([lat, lng], { icon: customIcon });
 
-      // Sensor identitas
-      const namaAman = sensorNama(titik.nama_usaha);
-
-      // Pasang Popup
       marker.bindPopup(`
         <div style="min-width: 200px; font-family: sans-serif;">
           <div style="font-size: 10px; font-weight: bold; color: #64748b; margin-bottom: 4px;">BANGUNAN ${nomor}</div>
@@ -98,11 +97,12 @@ function FastTitikLayer({ data }) {
       map.removeLayer(markerGroup);
     };
   }, [data, map]);
-  
   return null;
 }
 
-// 🌟 KOMPONEN BARU: PENGENDALI ZOOM OTOMATIS
+// =========================================================================
+// 🌟 3. KOMPONEN: PENGENDALI ZOOM OTOMATIS
+// =========================================================================
 function MapZoomController({ batasWilayah, selectedNmkec, selectedNmdesa, selectedSls }) {
   const map = useMap();
 
@@ -111,7 +111,6 @@ function MapZoomController({ batasWilayah, selectedNmkec, selectedNmdesa, select
 
     let featuresToZoom = [];
 
-    // Prioritas Zoom: SLS -> Kelurahan -> Kecamatan
     if (selectedSls) {
       featuresToZoom = batasWilayah.features.filter(f => String(getProp(f.properties, 'idsubsls')) === String(selectedSls));
     } else if (selectedNmdesa) {
@@ -126,7 +125,6 @@ function MapZoomController({ batasWilayah, selectedNmkec, selectedNmdesa, select
       });
     }
 
-    // Jika ada area yang cocok, kalkulasi dan terbang ke sana!
     if (featuresToZoom.length > 0) {
       const geoJsonLayer = L.geoJSON({ type: 'FeatureCollection', features: featuresToZoom });
       const bounds = geoJsonLayer.getBounds();
@@ -134,7 +132,6 @@ function MapZoomController({ batasWilayah, selectedNmkec, selectedNmdesa, select
         map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
       }
     } else if (!selectedNmkec && !selectedNmdesa && !selectedSls) {
-      // Jika semua filter direset, kembali ke zoom awal Kota Malang
       map.flyTo([-7.9839, 112.6326], 13, { duration: 1.5 });
     }
   }, [batasWilayah, selectedNmkec, selectedNmdesa, selectedSls, map]);
@@ -142,26 +139,143 @@ function MapZoomController({ batasWilayah, selectedNmkec, selectedNmdesa, select
   return null;
 }
 
+// =========================================================================
+// 🌟 4. KOMPONEN: PANEL DETEKSI ANOMALI BANGUNAN
+// =========================================================================
+function PanelAnomali({ dataTitik }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const { denganStrip, terlewat, maxSls } = useMemo(() => {
+    if (!dataTitik || dataTitik.length === 0) {
+      return { denganStrip: [], terlewat: [], maxSls: 0 };
+    }
+
+    const denganStrip = [];
+    const angkaUnik = new Set();
+    let maxSls = 0;
+
+    dataTitik.forEach(t => {
+      const noStr = String(t.nomor_bangunan || '').trim();
+
+      if (noStr.includes('-')) {
+        denganStrip.push({
+          nomor: noStr,
+          nama: sensorNama(t.nama_usaha) 
+        });
+      }
+
+      const parsed = parseInt(noStr, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        angkaUnik.add(parsed);
+        if (parsed > maxSls) maxSls = parsed;
+      }
+    });
+
+    const terlewat = [];
+    for (let i = 1; i <= maxSls; i++) {
+      if (!angkaUnik.has(i)) {
+        terlewat.push(i);
+      }
+    }
+
+    return { denganStrip, terlewat, maxSls };
+  }, [dataTitik]);
+
+  if (!dataTitik || dataTitik.length === 0) return null;
+
+  const totalAnomali = denganStrip.length + terlewat.length;
+
+  return (
+    <div className="absolute bottom-8 right-8 z-[1000] w-80">
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-md bg-opacity-95">
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={`w-full flex items-center justify-between p-4 transition-colors ${
+            totalAnomali > 0 ? 'bg-rose-500/10 hover:bg-rose-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500/20'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {totalAnomali > 0 ? <AlertTriangle size={20} className="text-rose-500" /> : <ShieldCheck size={20} className="text-emerald-500" />}
+            <div className="text-left">
+              <h3 className={`font-black text-sm ${totalAnomali > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                {totalAnomali > 0 ? 'ANOMALI TERDETEKSI' : 'DATA AMAN'}
+              </h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                {totalAnomali} Temuan
+              </p>
+            </div>
+          </div>
+          <div className="text-slate-400">
+            {isExpanded ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+          </div>
+        </button>
+
+        {isExpanded && (
+          <div className="p-4 bg-slate-950 border-t border-slate-800 max-h-64 overflow-y-auto custom-scrollbar">
+            {/* ANOMALI 1: STRIP */}
+            <div className="mb-4">
+              <h4 className="text-xs font-bold text-amber-500 flex items-center gap-1.5 mb-2 uppercase border-b border-slate-800 pb-1">
+                <AlertTriangle size={14} /> Penggunaan Strip (-) <span className="bg-amber-500 text-slate-900 px-1.5 rounded-md ml-auto text-[9px]">{denganStrip.length}</span>
+              </h4>
+              {denganStrip.length > 0 ? (
+                <ul className="space-y-1">
+                  {denganStrip.map((item, idx) => (
+                    <li key={idx} className="text-[11px] text-slate-300 flex items-start gap-2">
+                      <span className="text-rose-400 font-black mt-0.5">•</span>
+                      <span>No. <b className="text-white">{item.nomor}</b> ({item.nama})</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[10px] text-slate-500 italic">Tidak ada penggunaan strip (-).</p>
+              )}
+            </div>
+
+            {/* ANOMALI 2: TERLEWAT */}
+            <div>
+              <h4 className="text-xs font-bold text-blue-400 flex items-center gap-1.5 mb-2 uppercase border-b border-slate-800 pb-1">
+                <Database size={14} /> Nomor Terlewat <span className="bg-blue-500 text-white px-1.5 rounded-md ml-auto text-[9px]">{terlewat.length}</span>
+              </h4>
+              {terlewat.length > 0 ? (
+                <div className="text-[11px] text-slate-300 leading-relaxed">
+                  <p className="mb-2 text-slate-400 text-[10px]">Bangunan tertinggi: <b>{maxSls}</b></p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {terlewat.map(num => (
+                      <span key={num} className="bg-slate-800 border border-slate-700 text-blue-300 px-1.5 py-0.5 rounded font-mono font-bold">
+                        {num}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-slate-500 italic">Tidak ada urutan nomor yang terlewat.</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =========================================================================
+// 🌟 5. KOMPONEN UTAMA: PETA TEMATIK PUBLIC
+// =========================================================================
 export default function PetaTematikPublic() {
   const [dataTitik, setDataTitik] = useState([]);
   const [batasWilayah, setBatasWilayah] = useState(null); 
   const [isLoading, setIsLoading] = useState(false);
   
-  // MASTER DROPDOWN DARI API
   const [listKecamatan, setListKecamatan] = useState([]);
   const [listKelurahan, setListKelurahan] = useState([]);
   const [listSlsApi, setListSlsApi] = useState([]);
 
-  // STATE PILIHAN
   const [selectedKdkec, setSelectedKdkec] = useState("");
-  const [selectedNmkec, setSelectedNmkec] = useState(""); // 🌟 Tambahan untuk Zoom Kecamatan
+  const [selectedNmkec, setSelectedNmkec] = useState(""); 
   const [selectedIddesa, setSelectedIddesa] = useState("");
   const [selectedNmdesa, setSelectedNmdesa] = useState(""); 
   const [selectedSls, setSelectedSls] = useState("");   
 
-  // =========================================================================
-  // 1. INITIAL LOAD
-  // =========================================================================
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -181,14 +295,10 @@ export default function PetaTematikPublic() {
     fetchInitialData();
   }, []);
 
-  // =========================================================================
-  // 2. HANDLER DROPDOWN BERUNTUN (KEC -> KEL -> SLS)
-  // =========================================================================
   const handleKecamatanChange = async (e) => {
     const kdkec = e.target.value;
     setSelectedKdkec(kdkec);
     
-    // Simpan Nama Kecamatan untuk Zoom & Highlight GeoJSON
     const kecObj = listKecamatan.find(k => String(k.kdkec) === String(kdkec));
     setSelectedNmkec(kecObj ? kecObj.nmkec : "");
 
@@ -238,9 +348,6 @@ export default function PetaTematikPublic() {
     }
   };
 
-  // =========================================================================
-  // 3. FUNGSI TARIK DATA (LAZY LOADING API)
-  // =========================================================================
   const handleMuatData = async () => {
     if (!selectedIddesa) return;
     setIsLoading(true);
@@ -261,9 +368,6 @@ export default function PetaTematikPublic() {
     }
   };
 
-  // =========================================================================
-  // 4. LOGIKA FILTER TITIK LOKAL & HIGHLIGHT POLIGON
-  // =========================================================================
   const filteredTitik = useMemo(() => {
     if (!selectedSls) return dataTitik; 
     return dataTitik.filter(titik => String(titik.region_code).trim().startsWith(String(selectedSls)));
@@ -295,6 +399,8 @@ export default function PetaTematikPublic() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-slate-950 text-slate-200 relative font-sans">
+      
+      {/* 🌟 TOMBOL ADMIN PORTAL */}
       <div className="absolute top-6 right-6 z-[1000]">
         <Link to="/admin" className="flex items-center gap-2 bg-slate-900/80 hover:bg-blue-600 backdrop-blur border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl shadow-lg transition-all text-sm font-bold">
           <ShieldCheck size={18} />
@@ -302,6 +408,7 @@ export default function PetaTematikPublic() {
         </Link>
       </div>
 
+      {/* 🌟 PANEL FILTER KIRI */}
       <div className="absolute top-6 left-6 z-[1000] bg-slate-900/90 backdrop-blur-md border border-slate-700 p-5 rounded-2xl shadow-2xl max-w-sm w-80 max-h-[90vh] overflow-y-auto custom-scrollbar">
         <h1 className="text-xl font-black flex items-center gap-2 text-white mb-1 tracking-wide">
           <MapIcon className="text-emerald-500" size={24} />
@@ -309,7 +416,7 @@ export default function PetaTematikPublic() {
         </h1>
         <p className="text-[10px] text-slate-400 font-mono tracking-widest uppercase mb-4">BPS Kota Malang</p>
         
-        {/* === FILTER 1: KECAMATAN === */}
+        {/* KECAMATAN */}
         <div className="mb-3">
           <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase tracking-wider flex items-center gap-1.5"><Layers size={12}/> Kecamatan</label>
           <select 
@@ -322,7 +429,7 @@ export default function PetaTematikPublic() {
           </select>
         </div>
 
-        {/* === FILTER 2: KELURAHAN === */}
+        {/* KELURAHAN */}
         <div className="mb-3">
           <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase tracking-wider flex items-center gap-1.5"><Layers size={12}/> Kelurahan / Desa</label>
           <select 
@@ -336,7 +443,7 @@ export default function PetaTematikPublic() {
           </select>
         </div>
 
-        {/* === FILTER 3: SLS === */}
+        {/* SLS */}
         <div className="mb-4">
           <label className="text-[10px] font-bold text-slate-400 mb-1 block uppercase tracking-wider flex items-center gap-1.5"><Layers size={12}/> SLS (Satuan Lingkungan Setempat)</label>
           <select 
@@ -350,7 +457,6 @@ export default function PetaTematikPublic() {
           </select>
         </div>
 
-        {/* TOMBOL LAZY LOAD DATA */}
         <button 
           onClick={handleMuatData}
           disabled={!selectedIddesa || isLoading}
@@ -368,7 +474,6 @@ export default function PetaTematikPublic() {
           </p>
         )}
 
-        {/* TOMBOL RESET */}
         {(selectedKdkec || selectedIddesa || dataTitik.length > 0) && (
           <button 
             onClick={handleReset}
@@ -378,6 +483,7 @@ export default function PetaTematikPublic() {
           </button>
         )}
 
+        {/* LEGENDA */}
         <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-300 mt-2 border-t border-slate-700/50 pt-4">
           <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> APPROVED</div>
           <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div> OPEN</div>
@@ -393,7 +499,7 @@ export default function PetaTematikPublic() {
         </div>
       )}
 
-      {/* KANVAS PETA LEAFLET */}
+      {/* 🌟 KANVAS PETA LEAFLET */}
       <div className="absolute inset-0 z-0">
         <MapContainer 
           preferCanvas={true}
@@ -402,14 +508,14 @@ export default function PetaTematikPublic() {
           zoomControl={false}
           style={{ height: '100%', width: '100%', backgroundColor: '#0f172a' }}
         >
-          {/* GOOGLE MAPS HYBRID BASEMAP */}
+          {/* BASEMAP GOOGLE HYBRID */}
           <TileLayer 
             url="http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" 
             attribution="&copy; Google Maps"
             maxZoom={20}
           />
 
-          {/* 🌟 DISINI KITA PASANG KENDALI AUTO-ZOOM */}
+          {/* CONTROLLER AUTO-ZOOM */}
           <MapZoomController 
             batasWilayah={batasWilayah} 
             selectedNmkec={selectedNmkec} 
@@ -417,7 +523,7 @@ export default function PetaTematikPublic() {
             selectedSls={selectedSls} 
           />
 
-          {/* RENDER POLIGON */}
+          {/* RENDER POLIGON BATAS */}
           {batasWilayah && (
             <GeoJSON 
               key={`${selectedKdkec}-${selectedIddesa}-${selectedSls}`}
@@ -434,9 +540,14 @@ export default function PetaTematikPublic() {
             />
           )}
 
+          {/* RENDER TITIK LABEL NOMOR */}
           <FastTitikLayer data={filteredTitik} />
         </MapContainer>
       </div>
+
+      {/* 🌟 PANEL DETEKSI ANOMALI */}
+      <PanelAnomali dataTitik={filteredTitik} />
+      
     </div>
   );
 }
