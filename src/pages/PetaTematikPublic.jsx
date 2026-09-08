@@ -16,12 +16,8 @@ const getProp = (obj, key) => {
 // 🌟 HELPER SENSOR NAMA: BIMA SAKTI -> B*** S****
 const sensorNama = (nama) => {
   if (!nama || nama.trim() === '' || nama.toUpperCase() === 'N/A') return 'N/A';
-  
   return nama.split(' ').map(kata => {
-    // Kalau cuma 1 karakter/huruf, biarkan saja
     if (kata.length <= 1) return kata; 
-    
-    // Ambil huruf pertama, sisanya diganti bintang sebanyak jumlah huruf tersisa
     return kata.charAt(0) + '*'.repeat(kata.length - 1);
   }).join(' ');
 };
@@ -49,7 +45,6 @@ function FastTitikLayer({ data }) {
         color: '#ffffff', weight: 1.5, fillOpacity: 0.9
       });
 
-      // 🌟 EKSEKUSI SENSOR NAMA SEBELUM DITAMPILKAN KE POPUP
       const namaAman = sensorNama(titik.nama_usaha);
 
       marker.bindPopup(`
@@ -70,20 +65,61 @@ function FastTitikLayer({ data }) {
   return null;
 }
 
+// 🌟 KOMPONEN BARU: PENGENDALI ZOOM OTOMATIS
+function MapZoomController({ batasWilayah, selectedNmkec, selectedNmdesa, selectedSls }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!batasWilayah || !batasWilayah.features) return;
+
+    let featuresToZoom = [];
+
+    // Prioritas Zoom: SLS -> Kelurahan -> Kecamatan
+    if (selectedSls) {
+      featuresToZoom = batasWilayah.features.filter(f => String(getProp(f.properties, 'idsubsls')) === String(selectedSls));
+    } else if (selectedNmdesa) {
+      featuresToZoom = batasWilayah.features.filter(f => {
+        const nmdesa = getProp(f.properties, 'nmdesa');
+        return nmdesa && nmdesa.toUpperCase() === String(selectedNmdesa).toUpperCase();
+      });
+    } else if (selectedNmkec) {
+      featuresToZoom = batasWilayah.features.filter(f => {
+        const nmkec = getProp(f.properties, 'nmkec');
+        return nmkec && nmkec.toUpperCase() === String(selectedNmkec).toUpperCase();
+      });
+    }
+
+    // Jika ada area yang cocok, kalkulasi dan terbang ke sana!
+    if (featuresToZoom.length > 0) {
+      const geoJsonLayer = L.geoJSON({ type: 'FeatureCollection', features: featuresToZoom });
+      const bounds = geoJsonLayer.getBounds();
+      if (bounds.isValid()) {
+        map.flyToBounds(bounds, { padding: [50, 50], duration: 1.5 });
+      }
+    } else if (!selectedNmkec && !selectedNmdesa && !selectedSls) {
+      // Jika semua filter direset, kembali ke zoom awal Kota Malang
+      map.flyTo([-7.9839, 112.6326], 13, { duration: 1.5 });
+    }
+  }, [batasWilayah, selectedNmkec, selectedNmdesa, selectedSls, map]);
+
+  return null;
+}
+
 export default function PetaTematikPublic() {
   const [dataTitik, setDataTitik] = useState([]);
   const [batasWilayah, setBatasWilayah] = useState(null); 
   const [isLoading, setIsLoading] = useState(false);
   
-  // 🌟 MASTER DROPDOWN DARI API (DIKEMBALIKAN KE JALAN YANG BENAR)
+  // MASTER DROPDOWN DARI API
   const [listKecamatan, setListKecamatan] = useState([]);
   const [listKelurahan, setListKelurahan] = useState([]);
   const [listSlsApi, setListSlsApi] = useState([]);
 
-  // 🌟 STATE PILIHAN
+  // STATE PILIHAN
   const [selectedKdkec, setSelectedKdkec] = useState("");
+  const [selectedNmkec, setSelectedNmkec] = useState(""); // 🌟 Tambahan untuk Zoom Kecamatan
   const [selectedIddesa, setSelectedIddesa] = useState("");
-  const [selectedNmdesa, setSelectedNmdesa] = useState(""); // Disimpan untuk mencocokkan dengan GeoJSON
+  const [selectedNmdesa, setSelectedNmdesa] = useState(""); 
   const [selectedSls, setSelectedSls] = useState("");   
 
   // =========================================================================
@@ -93,12 +129,9 @@ export default function PetaTematikPublic() {
     const fetchInitialData = async () => {
       try {
         const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-        
-        // Tarik Master Kecamatan API
         const resKec = await axios.get(`${API_URL}/api/v1/maps/get-list-kecamatan`);
         setListKecamatan(resKec.data || []);
 
-        // Tarik GeoJSON Poligon
         const resBatas = await fetch('/batas_sls.geojson'); 
         if (resBatas.ok) {
           const batas = await resBatas.json();
@@ -118,6 +151,10 @@ export default function PetaTematikPublic() {
     const kdkec = e.target.value;
     setSelectedKdkec(kdkec);
     
+    // Simpan Nama Kecamatan untuk Zoom & Highlight GeoJSON
+    const kecObj = listKecamatan.find(k => String(k.kdkec) === String(kdkec));
+    setSelectedNmkec(kecObj ? kecObj.nmkec : "");
+
     setSelectedIddesa(''); 
     setSelectedNmdesa('');
     setSelectedSls('');
@@ -140,7 +177,6 @@ export default function PetaTematikPublic() {
     const iddesa = e.target.value;
     setSelectedIddesa(iddesa);
     
-    // Simpan Nama Desa untuk highlight Poligon GeoJSON
     const kelObj = listKelurahan.find(k => k.iddesa === iddesa);
     setSelectedNmdesa(kelObj ? kelObj.nmdesa : "");
 
@@ -173,8 +209,6 @@ export default function PetaTematikPublic() {
     setIsLoading(true);
     try {
       const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      
-      // 🌟 SEKARANG BENAR! MENGIRIMKAN KODE ID (Contoh: 3573050001) BUKAN NAMA KELURAHAN
       const response = await axios.get(`${API_URL}/api/v1/maps/get-titik-tematik?iddesa=${selectedIddesa}`);
       
       const titik = response.data.data || response.data;
@@ -202,15 +236,18 @@ export default function PetaTematikPublic() {
     const p = feature.properties;
     const fSLS = String(getProp(p, 'idsubsls'));
     const fKel = String(getProp(p, 'nmdesa'));
+    const fKec = String(getProp(p, 'nmkec'));
 
     if (selectedSls) return fSLS === String(selectedSls);
-    // Kita cek berdasarkan NAMA desa (karena GeoJSON isinya nmdesa, bukan iddesa)
     if (selectedNmdesa) return fKel.toUpperCase() === String(selectedNmdesa).toUpperCase();
+    if (selectedNmkec) return fKec.toUpperCase() === String(selectedNmkec).toUpperCase();
+    
     return false;
   };
 
   const handleReset = () => {
     setSelectedKdkec("");
+    setSelectedNmkec("");
     setSelectedIddesa("");
     setSelectedNmdesa("");
     setSelectedSls("");
@@ -276,7 +313,7 @@ export default function PetaTematikPublic() {
           </select>
         </div>
 
-        {/* 🌟 TOMBOL LAZY LOAD DATA */}
+        {/* TOMBOL LAZY LOAD DATA */}
         <button 
           onClick={handleMuatData}
           disabled={!selectedIddesa || isLoading}
@@ -328,11 +365,19 @@ export default function PetaTematikPublic() {
           zoomControl={false}
           style={{ height: '100%', width: '100%', backgroundColor: '#0f172a' }}
         >
-          {/* 🌟 GOOGLE MAPS HYBRID BASEMAP (SATELIT + JALAN/LABEL) */}
+          {/* GOOGLE MAPS HYBRID BASEMAP */}
           <TileLayer 
             url="http://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" 
             attribution="&copy; Google Maps"
             maxZoom={20}
+          />
+
+          {/* 🌟 DISINI KITA PASANG KENDALI AUTO-ZOOM */}
+          <MapZoomController 
+            batasWilayah={batasWilayah} 
+            selectedNmkec={selectedNmkec} 
+            selectedNmdesa={selectedNmdesa} 
+            selectedSls={selectedSls} 
           />
 
           {/* RENDER POLIGON */}
@@ -348,19 +393,6 @@ export default function PetaTematikPublic() {
                   fillColor: highlighted ? '#3b82f6' : 'transparent',
                   fillOpacity: highlighted ? 0.2 : 0
                 };
-              }}
-              onEachFeature={(feature, layer) => {
-                layer.on({
-                  click: () => {
-                    const p = feature.properties;
-                    const fKec = getProp(p, 'nmkec');
-                    const fKel = getProp(p, 'nmdesa');
-                    const fSLS = getProp(p, 'idsubsls');
-
-                    // Kita asumsikan API tidak dipanggil saat klik dari peta agar tidak membingungkan state dropdown API
-                    console.log(`Poligon di klik: Kec ${fKec}, Kel ${fKel}, SLS ${fSLS}`);
-                  }
-                });
               }}
             />
           )}
