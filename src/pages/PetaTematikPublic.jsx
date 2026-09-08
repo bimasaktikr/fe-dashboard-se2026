@@ -22,38 +22,74 @@ const sensorNama = (nama) => {
   }).join(' ');
 };
 
-// 🌟 KOMPONEN RENDER CEPAT TITIK
+// 🌟 KOMPONEN RENDER CEPAT TITIK DENGAN LABEL NOMOR BANGUNAN
 function FastTitikLayer({ data }) {
   const map = useMap();
+  
   useEffect(() => {
     if (!data || data.length === 0) return;
-    const canvasRenderer = L.canvas({ padding: 0.5 });
+    
+    // Kita membuat layer group baru untuk menampung marker custom
     const markerGroup = L.layerGroup().addTo(map);
 
     data.forEach(titik => {
       const lat = parseFloat(titik.latitude);
       const lng = parseFloat(titik.longitude);
       
-      let color = '#94a3b8';
+      let color = '#94a3b8'; // Default Abu-abu
       if (titik.status_alias === 'APPROVED') color = '#10b981';
       else if (titik.status_alias === 'OPEN') color = '#f59e0b';
       else if (titik.status_alias === 'SUBMITTED') color = '#3b82f6';
       else if (titik.status_alias === 'REJECTED') color = '#ef4444';
 
-      const marker = L.circleMarker([lat, lng], {
-        renderer: canvasRenderer, radius: 5, fillColor: color,
-        color: '#ffffff', weight: 1.5, fillOpacity: 0.9
+      const nomor = titik.nomor_bangunan || '-';
+
+      // 🌟 DESAIN PIN MARKER DENGAN NOMOR BANGUNAN (Berupa Kapsul/Lingkaran)
+      const iconHtml = `
+        <div style="
+          background-color: ${color};
+          border: 1.5px solid #ffffff;
+          color: #ffffff;
+          font-weight: 900;
+          font-size: 10px;
+          font-family: sans-serif;
+          border-radius: 12px;
+          padding: 2px 5px;
+          min-width: 20px;
+          text-align: center;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+          transform: translate(-50%, -50%);
+          display: inline-block;
+          text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+        ">
+          ${nomor}
+        </div>
+      `;
+
+      // Jadikan div HTML di atas sebagai Icon Marker
+      const customIcon = L.divIcon({
+        html: iconHtml,
+        className: '', // Dikosongkan agar tidak ada kotak putih bawaan Leaflet
+        iconSize: [0, 0], // Size diatur oleh CSS transform di atas
+        iconAnchor: [0, 0], 
+        popupAnchor: [0, -12] // Posisi popup agak naik ke atas
       });
 
+      // Pasang marker dengan custom icon
+      const marker = L.marker([lat, lng], { icon: customIcon });
+
+      // Sensor identitas
       const namaAman = sensorNama(titik.nama_usaha);
 
+      // Pasang Popup
       marker.bindPopup(`
         <div style="min-width: 200px; font-family: sans-serif;">
-          <div style="font-size: 10px; font-weight: bold; color: #64748b; margin-bottom: 4px;">BANGUNAN ${titik.nomor_bangunan || '-'}</div>
+          <div style="font-size: 10px; font-weight: bold; color: #64748b; margin-bottom: 4px;">BANGUNAN ${nomor}</div>
           <div style="font-size: 14px; font-weight: bold; color: #0f172a; margin-bottom: 4px;">${namaAman}</div>
           <div style="font-size: 10px; font-weight: bold; color: #10b981;">STATUS: ${titik.status_alias}</div>
         </div>
       `);
+      
       markerGroup.addLayer(marker);
     });
 
@@ -62,6 +98,7 @@ function FastTitikLayer({ data }) {
       map.removeLayer(markerGroup);
     };
   }, [data, map]);
+  
   return null;
 }
 
