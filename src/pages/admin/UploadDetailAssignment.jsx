@@ -4,55 +4,106 @@ import { UploadCloud, CheckCircle, AlertTriangle, Loader2, MapPin } from 'lucide
 
 export default function UploadDetailAssignment() {
   const [file, setFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
+  
+  // 🌟 PERBAIKAN 1: Jadikan satu state status berbentuk objek yang rapi
   const [status, setStatus] = useState({ type: '', message: '' });
+  
+  // 🌟 PERBAIKAN 2: Gunakan satu state loading saja untuk semua
+  const [loading, setLoading] = useState(false);
+  
+  const [progress, setProgress] = useState(0); 
+  const [progressText, setProgressText] = useState('');
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
-      setStatus({ type: '', message: '' });
+      setStatus({ type: '', message: '' }); // Reset pesan saat file baru dipilih
     }
   };
 
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) {
+      // 🌟 Format status harus konsisten berbentuk objek
       setStatus({ type: 'error', message: 'Pilih file Excel terlebih dahulu!' });
       return;
     }
 
-    setIsUploading(true);
-    setStatus({ type: '', message: '' });
+    setLoading(true);
+    setProgress(0);
+    setProgressText('Sedang membaca & merangkum Excel...');
+    setStatus({ type: '', message: '' }); // Bersihkan error sebelumnya
 
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-      // 🌟 SESUAIKAN DENGAN URL API FASTAPI ANDA
-      const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';      
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-      const response = await fetch(`${API_URL}/api/v1/admin/upload-detail-assignment`, {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/admin/upload-detail-assignment`, {
         method: 'POST',
         body: formData,
       });
 
-      const result = await response.json();
+      if (!response.ok) throw new Error('Terjadi kesalahan koneksi ke markas');
 
-      if (response.ok) {
-        setStatus({ 
-          type: 'success', 
-          message: `Berhasil! ${result.inserted || 0} titik disuntikkan, ${result.updated || 0} titik diperbarui.` 
-        });
-        setFile(null); // Reset file setelah sukses
-      } else {
-        // FastAPI biasanya mengembalikan error di properti 'detail'
-        setStatus({ type: 'error', message: result.detail || 'Gagal mengunggah data.' });
+      // TANGKAP ALIRAN DATA (STREAMING)
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(Boolean);
+
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+
+            if (data.status === 'start') {
+               setProgressText(`Menyiapkan injeksi ${data.total} data bangunan...`);
+            } 
+            else if (data.status === 'progress') {
+               const percentage = Math.round((data.processed / data.total) * 100);
+               setProgress(percentage);
+               setProgressText(`Menyuntikkan data ke peta... ${data.processed} / ${data.total}`);
+            } 
+            else if (data.status === 'done') {
+               setProgress(100);
+               setProgressText('Eksekusi Selesai!');
+               
+               // 🌟 Masukkan balasan sukses ke dalam state objek
+               setStatus({ 
+                 type: 'success', 
+                 message: `${data.message} (${data.processed} titik diperbarui)` 
+               });
+               setFile(null); 
+            }
+            // 🌟 TAMBAHKAN BLOK INI UNTUK MENANGKAP ERROR DARI STREAM
+            else if (data.status === 'error') {
+               setStatus({ 
+                 type: 'error', 
+                 message: `Gagal saat memproses baris Excel: ${data.message}` 
+               });
+               // Hentikan loading agar tombol bisa ditekan lagi
+               setLoading(false);
+               setProgressText('');
+            }
+          } catch (err) {
+            console.error('Pesan Stream gagal dibaca:', err);
+          }
+        }
       }
     } catch (error) {
-      console.error("Upload error:", error);
-      setStatus({ type: 'error', message: 'Koneksi ke server FastAPI terputus.' });
+      console.error(error);
+      // 🌟 Masukkan pesan error ke dalam state objek
+      setStatus({ type: 'error', message: error.message });
+      setProgressText('');
     } finally {
-      setIsUploading(false);
+      setLoading(false);
+      setTimeout(() => { setProgress(0); setProgressText(''); }, 3000);
     }
   };
 
@@ -69,7 +120,6 @@ export default function UploadDetailAssignment() {
       </div>
 
       <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden">
-        {/* Efek Glow Tipis di Latar */}
         <div className="absolute -top-20 -right-20 bg-rose-500/5 w-64 h-64 rounded-full blur-3xl"></div>
 
         <form onSubmit={handleUpload} className="space-y-6 relative z-10">
@@ -110,10 +160,10 @@ export default function UploadDetailAssignment() {
 
           <button 
             type="submit" 
-            disabled={!file || isUploading}
+            disabled={!file || loading} // 🌟 Sinkronisasi tombol dengan state loading
             className="w-full bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:border-slate-700 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all shadow-lg flex justify-center items-center gap-3 border border-rose-500/50"
           >
-            {isUploading ? (
+            {loading ? (
               <>
                 <Loader2 size={20} className="animate-spin" /> 
                 Menyuntikkan Koordinat...
@@ -122,6 +172,22 @@ export default function UploadDetailAssignment() {
               'Eksekusi Injeksi Peta'
             )}
           </button>
+
+          {(loading || progress > 0) && (
+            <div className="mt-6 p-5 bg-slate-900 border border-slate-700 rounded-xl">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-slate-300 animate-pulse">{progressText}</span>
+                <span className="text-xs font-black text-blue-400">{progress}%</span>
+              </div>
+              
+              <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-600 to-emerald-400 transition-all duration-300 ease-out shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
         </form>
       </div>
     </div>
