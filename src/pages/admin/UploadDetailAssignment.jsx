@@ -48,17 +48,29 @@ export default function UploadDetailAssignment() {
       if (!response.ok) throw new Error('Terjadi kesalahan koneksi ke markas');
 
       // TANGKAP ALIRAN DATA (STREAMING)
+      // 🌟 TANGKAP ALIRAN DATA (STREAMING)
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      
+      let buffer = ''; // 🌟 TAMBAHKAN BUFFER PENAMPUNG DI SINI
 
       while (true) {
         const { value, done } = await reader.read();
-        if (done) break;
+        if (done) break; 
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(Boolean);
+        // Masukkan paket baru ke dalam wadah penampung
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Pisahkan pesan berdasarkan enter (\n)
+        const lines = buffer.split('\n');
+        
+        // 🌟 KUNCI RAHASIA: Ambil elemen terakhir (yang mungkin terpotong) 
+        // dan kembalikan ke buffer untuk digabung dengan paket selanjutnya!
+        buffer = lines.pop(); 
 
         for (const line of lines) {
+          if (!line.trim()) continue; // Abaikan baris kosong
+
           try {
             const data = JSON.parse(line);
 
@@ -73,26 +85,16 @@ export default function UploadDetailAssignment() {
             else if (data.status === 'done') {
                setProgress(100);
                setProgressText('Eksekusi Selesai!');
-               
-               // 🌟 Masukkan balasan sukses ke dalam state objek
-               setStatus({ 
-                 type: 'success', 
-                 message: `${data.message} (${data.processed} titik diperbarui)` 
-               });
+               setStatus({ type: 'success', message: `${data.message} (${data.processed} titik diperbarui)` });
                setFile(null); 
             }
-            // 🌟 TAMBAHKAN BLOK INI UNTUK MENANGKAP ERROR DARI STREAM
             else if (data.status === 'error') {
-               setStatus({ 
-                 type: 'error', 
-                 message: `Gagal saat memproses baris Excel: ${data.message}` 
-               });
-               // Hentikan loading agar tombol bisa ditekan lagi
+               setStatus({ type: 'error', message: `Gagal: ${data.message}` });
                setLoading(false);
                setProgressText('');
             }
           } catch (err) {
-            console.error('Pesan Stream gagal dibaca:', err);
+            console.error('Pesan Stream gagal dibaca (diabaikan sementara):', err, line);
           }
         }
       }
